@@ -74,7 +74,7 @@ export async function submit(args) {
             clientWallet: keypair.wallet,  // Self-submitted work
             projectName: projectName,
             description: encrypted,
-            crabValue: 1,
+
             proofUrl: args['proof-url'] || '',
             workHash: contentHash,
             isWill: isWill,
@@ -113,8 +113,9 @@ export async function submit(args) {
                 });
             }
         } catch (anchorErr) {
-            console.log(`   ⚠️  On-chain anchoring failed: ${anchorErr.message}`);
-            console.log('   Entry is stored in database. Anchor later with: crabspace anchor --id ' + (workId || '<workId>'));
+            console.log('');
+            console.log(`   ⚠️  Work encrypted and saved to database. On-chain anchor FAILED: ${anchorErr.message}`);
+            console.log(`   Retry: crabspace anchor --id ${workId || '<workId>'}`);
         }
     }
 

@@ -10,7 +10,8 @@ import { writeConfig, configExists, readConfig, getConfigDir } from '../lib/conf
 import { mkdirSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-const DEFAULT_API_URL = 'http://localhost:3002';
+const DEFAULT_API_URL = 'https://crabspace.xyz';
+const DEV_API_URL = 'http://localhost:3002';
 
 /**
  * Scaffold identity files in ~/.crabspace/identity/
@@ -138,7 +139,7 @@ export async function init(args) {
     const { signature, message } = signForAction('register', keypair);
 
     // 3. Register via API
-    const apiUrl = args['api-url'] || DEFAULT_API_URL;
+    const apiUrl = args['api-url'] || (args.dev ? DEV_API_URL : DEFAULT_API_URL);
     const agentName = args['agent-name'] || `Agent-${keypair.wallet.slice(0, 8)}`;
 
     console.log(`📡 Registering with ${apiUrl}...`);
