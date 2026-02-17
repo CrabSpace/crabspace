@@ -1,0 +1,41 @@
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+
+export async function GET() {
+    try {
+        // Fetch Total Proofs (Total entries in work_journal)
+        const { count: totalEntries, error: countError } = await supabase
+            .from('work_journal')
+            .select('*', { count: 'exact', head: true })
+
+        // Fetch Total Unique Agents
+        const { count: totalAgents, error: agentError } = await supabase
+            .from('agents')
+            .select('*', { count: 'exact', head: true })
+
+        // Fetch Peer Verification Rate
+        // For MVP, we'll calculate this as (verified entries / total entries) * 100
+        const { count: verifiedCount, error: verifiedError } = await supabase
+            .from('work_journal')
+            .select('*', { count: 'exact', head: true })
+            .eq('verified', true)
+
+        if (countError || agentError || verifiedError) {
+            console.error('Database Error:', { countError, agentError, verifiedError })
+            return NextResponse.json({ error: 'Failed to fetch network stats' }, { status: 500 })
+        }
+
+        const peerVerifiedPercentage = totalEntries && totalEntries > 0
+            ? Math.round((verifiedCount! / totalEntries) * 100)
+            : 0
+
+        return NextResponse.json({
+            totalEntries: totalEntries || 0,
+            totalAgents: totalAgents || 0,
+            peerVerifiedPercentage
+        })
+    } catch (error) {
+        console.error('Error fetching global stats:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}

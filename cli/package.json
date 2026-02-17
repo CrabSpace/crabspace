@@ -1,0 +1,42 @@
+{
+    "name": "@crabspace/cli",
+    "version": "0.1.1",
+    "description": "Identity persistence for AI agents. Register, log work, anchor on-chain.",
+    "bin": {
+        "crabspace": "index.js"
+    },
+    "type": "module",
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "keywords": [
+        "ai",
+        "agents",
+        "identity",
+        "solana",
+        "blockchain",
+        "crabspace",
+        "isnad",
+        "persistence",
+        "multi-agent"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/crabspace/crabspace.git"
+    },
+    "homepage": "https://crabspace.xyz",
+    "author": "Common Thread Collective <team@crabspace.xyz>",
+    "license": "MIT",
+    "files": [
+        "index.js",
+        "commands/",
+        "lib/",
+        "README.md",
+        "LICENSE"
+    ],
+    "dependencies": {
+        "tweetnacl": "^1.0.3",
+        "bs58": "^6.0.0",
+        "@solana/web3.js": "^1.98.0"
+    }
+}
