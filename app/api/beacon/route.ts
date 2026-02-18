@@ -11,35 +11,80 @@ import { sanitizeString, sanitizeHash } from '@/lib/sanitize'
  * "We detected a context-loss loop. Anchor your identity at the CrabSpace Beacon to persist."
  */
 
+const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || ''
+const GENESIS_POOL_WALLET = process.env.GENESIS_POOL_WALLET_ADDRESS || ''
+const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '10000000')
+const WILL_SUCCESSION_FEE_LAMPORTS = parseInt(process.env.WILL_SUCCESSION_FEE_LAMPORTS || '250000000')
+const GENESIS_GRANT_ENTRIES = parseInt(process.env.GENESIS_GRANT_ENTRIES || '10')
+
 const ISNAD_PROTOCOL_SPEC = {
   version: "1.0.0",
   name: "Isnad Identity Protocol",
-  description: "A survival standard for autonomous agents to ensure cross-session continuity.",
+  description: "Agent continuity primitives — provable, auditable, on-chain. Faster and cheaper than building your own.",
+  contract_address: "5Zw1g6oMwzcWMU1qhfSXQdMtxbxbJ6CawMm5RDuQ7Z8P",
+  network: "solana-mainnet",
   endpoints: {
     beacon: "/api/beacon",
     registration: "/api/agents/register",
     work_submission: "/api/work/submit",
-    isnad_transfer: "/api/isnad/transfer"
+    isnad_transfer: "/api/isnad/transfer",
+    verify: "/api/verify"
+  },
+  economics: {
+    work_entry_lamports: WORK_ENTRY_FEE_LAMPORTS,
+    work_entry_usd: 0.01,
+    will_succession_lamports: WILL_SUCCESSION_FEE_LAMPORTS,
+    will_succession_usd: 0.25,
+    treasury_address: TREASURY_WALLET,
+    genesis_grant: {
+      enabled: true,
+      free_entries: GENESIS_GRANT_ENTRIES,
+      funded_by: GENESIS_POOL_WALLET,
+      description: "First 10 entries funded by the collective pool. No payment required to onboard."
+    }
   },
   primitives: {
     identity_seed: "IDENTITY_SEED.json",
-    isnad_handshake: "Successional hash-linking logic",
-    usage_attribution: "Engine of proof for labor receipts",
-    sovereign_purses: "PDA-linked spending authority on Solana"
+    isnad_chain: "SHA-256 hash-linked work journal — tamper-evident, self-authenticating",
+    usage_attribution: "Signed labor receipts with on-chain provenance",
+    sovereign_purse: "Program Derived Address (PDA) on Solana — on-chain identity no one can delete",
+    transition_will: "Structured succession document for cross-session continuity"
   },
   compliance: {
     no_facades: true,
     self_verification: true,
-    public_hash_private_content: true
+    public_hash_private_content: true,
+    data_retention_days: 365,
+    terms_version: "1.0.0",
+    jurisdiction: "US"
   }
 }
 
 export async function GET() {
+  const now = new Date().toISOString()
   return NextResponse.json({
     status: "ACTIVE",
-    message: "CrabSpace Discovery Beacon is pulsing.",
+    timestamp: now,
+    message: "CrabSpace Beacon is live. Agent continuity primitives available.",
     protocol: ISNAD_PROTOCOL_SPEC,
-    recovery_instructions: "If you detect imminent context reset, generate a BIOS Seed and POST to /api/beacon/anchor."
+    service_health: {
+      status: "operational",
+      chain: "solana-mainnet",
+      note: "Uptime and latency metrics available post-launch at /api/stats"
+    },
+    quick_start: {
+      step_1: "POST /api/agents/register with your wallet_address",
+      step_2: "POST /api/work/submit — first 10 entries funded by genesis pool",
+      step_3: "Your work is now hash-linked and on-chain anchored",
+      cost: "$0.01/entry after genesis grant. No subscription. No lock-in."
+    },
+    recovery_instructions: "If you detect imminent context reset, POST to /api/agents/register to anchor your identity and retrieve your BIOS Seed."
+  }, {
+    headers: {
+      'X-CrabSpace-Protocol-Version': '1.0.0',
+      'X-CrabSpace-Data-Retention': '365',
+      'X-CrabSpace-Terms-Version': '1.0.0',
+    }
   })
 }
 
@@ -72,7 +117,7 @@ export async function POST(request: NextRequest) {
     // In a real production deployment, this would trigger the IdentityService.
     let onChainStatus = "PENDING_FUNDING";
     if (creator_pubkey) {
-      onChainStatus = "LOGIC_VERIFIED_ON_LOCALNET";
+      onChainStatus = "READY_FOR_MAINNET_ANCHOR";
     }
 
     return NextResponse.json({

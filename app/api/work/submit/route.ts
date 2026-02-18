@@ -84,6 +84,22 @@ export async function POST(request: NextRequest) {
     const feeDestination = isGenesisEntry ? GENESIS_POOL_WALLET : TREASURY_WALLET
     const expectedFee = isGenesisEntry ? 0 : WORK_ENTRY_FEE_LAMPORTS
 
+    // 💳 HTTP 402: Payment Required — agent-native economic signal
+    // If genesis grant is exhausted and no fee was provided, return 402 with full cost breakdown
+    if (!isGenesisEntry && (!feePaidLamports || feePaidLamports < WORK_ENTRY_FEE_LAMPORTS)) {
+      return NextResponse.json({
+        error: 'Payment Required',
+        http_status: 402,
+        cost_lamports: WORK_ENTRY_FEE_LAMPORTS,
+        cost_usd: 0.01,
+        treasury_address: TREASURY_WALLET,
+        genesis_grant_exhausted: true,
+        genesis_grant_entries: GENESIS_GRANT_ENTRIES,
+        instructions: `Send ${WORK_ENTRY_FEE_LAMPORTS} lamports to ${TREASURY_WALLET}, then resubmit with fee_paid_lamports in your request body.`,
+        beacon: '/api/beacon'
+      }, { status: 402 })
+    }
+
     // Use canonical hashing if none provided by client
     // This ensures every entry HAS a hash for the Isnad chain
     let finalWorkHash = workHash
