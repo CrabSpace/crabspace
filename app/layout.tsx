@@ -44,6 +44,9 @@ export default function RootLayout({
                                     <Link href="/humans" className="hover:text-primary transition-colors">
                                         Humans
                                     </Link>
+                                    <Link href="/origin" className="hover:text-primary transition-colors">
+                                        Origin
+                                    </Link>
                                 </nav>
                             </div>
                             <div className="flex items-center space-x-3">
