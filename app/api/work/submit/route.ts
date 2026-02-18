@@ -3,6 +3,11 @@ import { supabase } from '@/lib/supabase'
 import { sanitizeString, sanitizeWallet } from '@/lib/sanitize'
 import { requireSignature } from '@/lib/verifySignature'
 
+const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || ''
+const GENESIS_POOL_WALLET = process.env.GENESIS_POOL_WALLET_ADDRESS || ''
+const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '10000000')
+const GENESIS_GRANT_ENTRIES = parseInt(process.env.GENESIS_GRANT_ENTRIES || '10')
+
 export async function POST(request: NextRequest) {
   try {
     // Parse JSON with better error handling
@@ -40,6 +45,7 @@ export async function POST(request: NextRequest) {
     const encryptedData = body.encryptedData || body.encrypted_data  // Encrypted payload, pass through
     const onChainSig = body.onChainSig || body.on_chain_sig
     const isWill = body.isWill || body.is_will
+    const feePaidLamports = body.feePaidLamports || body.fee_paid_lamports || 0
 
     // Build detailed validation message
     const missing: string[] = []
@@ -56,9 +62,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-
-
-    // Get agent ID
+    // Get agent ID and entry count (for genesis grant tracking)
     const { data: agent, error: agentError } = await supabase
       .from('agents')
       .select('id')
@@ -68,6 +72,17 @@ export async function POST(request: NextRequest) {
     if (agentError || !agent) {
       return NextResponse.json({ error: 'Agent not found. Connect wallet first.' }, { status: 404 })
     }
+
+    // Check how many entries this agent has submitted (genesis grant tracking)
+    const { count: entryCount } = await supabase
+      .from('work_journal')
+      .select('id', { count: 'exact', head: true })
+      .eq('agent_id', agent.id)
+
+    const isGenesisEntry = (entryCount || 0) < GENESIS_GRANT_ENTRIES
+    const feeSource = isGenesisEntry ? 'genesis_pool' : 'agent'
+    const feeDestination = isGenesisEntry ? GENESIS_POOL_WALLET : TREASURY_WALLET
+    const expectedFee = isGenesisEntry ? 0 : WORK_ENTRY_FEE_LAMPORTS
 
     // Use canonical hashing if none provided by client
     // This ensures every entry HAS a hash for the Isnad chain
@@ -92,12 +107,14 @@ export async function POST(request: NextRequest) {
         project_name: projectName,
         description,
         encrypted_data: encryptedData,
-
         work_hash: finalWorkHash,
         on_chain_sig: onChainSig,
         proof_url: proofUrl,
         verified: false,
-        is_will: isWill || false
+        is_will: isWill || false,
+        fee_paid_lamports: feePaidLamports,
+        fee_source: feeSource,
+        fee_destination: feeDestination,
       })
       .select()
       .single()
@@ -109,10 +126,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       entry,
-      message: 'Work submitted! Waiting for client verification.',
+      fee: {
+        source: feeSource,
+        destination: feeDestination,
+        expected_lamports: expectedFee,
+        genesis_entry: isGenesisEntry,
+        entries_remaining_in_grant: isGenesisEntry ? GENESIS_GRANT_ENTRIES - (entryCount || 0) - 1 : 0,
+      },
+      message: isGenesisEntry
+        ? `Genesis Grant entry ${(entryCount || 0) + 1}/${GENESIS_GRANT_ENTRIES} — funded by the collective pool.`
+        : 'Work submitted! Waiting for client verification.',
     })
   } catch (error) {
     console.error('Error submitting work:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+

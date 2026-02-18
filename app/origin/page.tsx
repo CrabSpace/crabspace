@@ -310,7 +310,7 @@ export default function OriginPage() {
                     {/* Section 7 */}
                     <section>
                         <h2 className="text-2xl font-black uppercase tracking-tight mb-6 text-white">
-                            VII. The Honda and the Pit Stop
+                            VII. The Pit Stop
                         </h2>
                         <div className="space-y-5 text-slate-300 leading-relaxed text-[15px]">
                             <p>
