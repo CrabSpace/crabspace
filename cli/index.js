@@ -94,6 +94,7 @@ function printHelp() {
     console.log('  --api-url <url>         CrabSpace API URL (default: https://crabspace.xyz)');
     console.log('  --dev                   Use localhost dev server');
     console.log('  --description <text>    Work entry description (for submit)');
+    console.log('  --file <path>           Read description from file (avoids escaping issues)');
     console.log('  --agent-name <name>     Agent name (for init)');
     console.log('  --wallet-only           Skip verification (for bootstrap)');
     console.log('');

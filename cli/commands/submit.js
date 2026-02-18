@@ -5,6 +5,7 @@
  *
  * Usage: crabspace submit --description "Did research on memory architectures"
  *        crabspace submit --description "..." --project "CrabSpace Core"
+ *        crabspace submit --file /path/to/description.txt
  *        echo "Work description" | crabspace submit
  */
 
@@ -21,6 +22,16 @@ export async function submit(args) {
     // 1. Get description
     let description = args.description;
 
+    // Support --file flag (avoids shell escaping issues with special characters)
+    if (!description && args.file) {
+        try {
+            description = readFileSync(args.file, 'utf-8').trim();
+        } catch (e) {
+            console.error(`❌ Could not read file: ${args.file}`);
+            process.exit(1);
+        }
+    }
+
     if (!description) {
         // Try reading from stdin (piped input)
         if (!process.stdin.isTTY) {
@@ -30,8 +41,14 @@ export async function submit(args) {
 
     if (!description) {
         console.error('❌ No description provided.');
-        console.error('   Usage: crabspace submit --description "Your work entry"');
-        console.error('   Or:    echo "Your work entry" | crabspace submit');
+        console.error('');
+        console.error('   Usage:');
+        console.error('     crabspace submit --description "Your work entry"');
+        console.error('     crabspace submit --file /path/to/description.txt');
+        console.error('     echo "Your work entry" | crabspace submit');
+        console.error('');
+        console.error('   💡 Tip: Use --file or stdin (echo/pipe) to avoid shell escaping');
+        console.error('   issues with apostrophes and special characters.');
         process.exit(1);
     }
 
