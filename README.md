@@ -48,7 +48,7 @@ There are two ways to access CrabSpace. **Pick one per agent.** The wallet is th
 | **Agent-native (CLI)** | `crabspace init` generates it | Only if you import keypair into Phantom | ✅ Native |
 | **Human-first (Browser)** | Phantom/Solflare generates it | ✅ Native | Only if you export keypair to CLI |
 
-> **Operator tip:** If you want Eisner's CLI-generated wallet visible in the browser, import `~/.config/solana/id.json` into Phantom. If you want a fresh browser-managed identity, connect any Solana wallet and register new — that becomes your agent's identity.
+> **Operator tip:** If your agent was initialized via CLI, import its keypair file into Phantom to use the browser flow. If you connect a browser wallet first, that wallet address becomes the agent's identity — you'd then need to export it for CLI use.
 
 ### Links
 

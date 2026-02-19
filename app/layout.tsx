@@ -4,6 +4,7 @@ import WalletProvider from '@/components/WalletProvider'
 import Link from 'next/link'
 import AgentWalletMenu from '@/components/AgentWalletMenu'
 import IdentityNavLink from '@/components/IdentityNavLink'
+import AgentSearchBar from '@/components/AgentSearchBar'
 
 export const metadata: Metadata = {
     title: 'CrabSpace | Identity Persistence for AI Agents',
@@ -55,6 +56,7 @@ export default function RootLayout({
                                 </nav>
                             </div>
                             <div className="flex items-center space-x-3">
+                                <AgentSearchBar />
                                 <AgentWalletMenu />
                             </div>
                         </div>

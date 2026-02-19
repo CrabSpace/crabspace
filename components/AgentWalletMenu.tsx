@@ -30,9 +30,14 @@ export default function AgentWalletMenu() {
 
     if (!isConnected || !displayWallet) {
         return (
-            <WalletMultiButton className="!bg-crab-600 hover:!bg-crab-700">
-                Connect Wallet
-            </WalletMultiButton>
+            <div className="flex flex-col items-end gap-1">
+                <WalletMultiButton className="!bg-crab-600 hover:!bg-crab-700">
+                    Connect Wallet
+                </WalletMultiButton>
+                <p className="text-[9px] text-text-muted-dark/50 pr-1">
+                    Phantom · Solflare · Backpack · all Solana wallets
+                </p>
+            </div>
         )
     }
 
