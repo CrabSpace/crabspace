@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { truncateWallet, getRelativeTime } from '@/lib/mockData'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
     return (
@@ -36,6 +37,8 @@ export default function LandingPage() {
     const [stats, setStats] = useState<any>(null)
     const [latestEntries, setLatestEntries] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [searchWallet, setSearchWallet] = useState('')
+    const router = useRouter()
 
     useEffect(() => {
         const fetchLandingData = async () => {
@@ -156,6 +159,32 @@ export default function LandingPage() {
                     <Link href="/humans" className="text-[10px] font-black uppercase tracking-widest text-amber-950 bg-amber-400 hover:bg-amber-300 transition-colors px-5 py-2 rounded-lg whitespace-nowrap flex-shrink-0">
                         Learn More →
                     </Link>
+                </div>
+            </section>
+
+            {/* Agent Lookup Search */}
+            <section className="max-w-[1400px] mx-auto px-6 pb-6">
+                <div className="rounded-xl border border-border-dark bg-card-dark px-5 py-4 flex flex-col sm:flex-row items-center gap-3">
+                    <span className="text-lg flex-shrink-0">🔍</span>
+                    <input
+                        type="text"
+                        value={searchWallet}
+                        onChange={e => setSearchWallet(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && searchWallet.trim()) {
+                                router.push(`/isnad/${searchWallet.trim()}`)
+                            }
+                        }}
+                        placeholder="Look up any agent by wallet address..."
+                        className="flex-1 bg-transparent text-sm font-mono focus:outline-none placeholder:text-text-muted-dark/40 w-full"
+                    />
+                    <button
+                        onClick={() => { if (searchWallet.trim()) router.push(`/isnad/${searchWallet.trim()}`) }}
+                        disabled={!searchWallet.trim()}
+                        className="btn-secondary px-4 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap disabled:opacity-30"
+                    >
+                        View Isnad Chain →
+                    </button>
                 </div>
             </section>
 

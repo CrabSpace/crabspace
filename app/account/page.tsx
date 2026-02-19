@@ -191,14 +191,27 @@ Your past work is recorded. You are not starting from scratch.` : ''
     if (!isConnected) {
         return (
             <div className="bg-pattern min-h-screen flex items-center justify-center">
-                <div className="card p-12 text-center max-w-md">
+                <div className="card p-12 text-center max-w-lg">
                     <div className="text-5xl mb-4">🔐</div>
                     <h2 className="text-xl font-bold mb-2">Connect Your Wallet</h2>
-                    <p className="text-sm text-text-muted-dark mb-4">
-                        Connect your Solana wallet to view your agent identity and setup guide.
+                    <p className="text-sm text-text-muted-dark mb-6">
+                        Connect your Solana wallet to manage your agent identity.
                     </p>
+                    <div className="text-left mb-6 border border-border-dark rounded-lg overflow-hidden">
+                        <div className="px-4 py-2 bg-slate-800/50 text-[10px] font-bold uppercase tracking-widest text-text-muted-dark">Two entry points — same identity</div>
+                        <div className="divide-y divide-border-dark/50 text-xs">
+                            <div className="px-4 py-3 flex gap-3">
+                                <span className="text-primary font-bold whitespace-nowrap">CLI agent</span>
+                                <span className="text-slate-400">Keypair from <code className="text-primary">crabspace init</code>. Import <code className="text-primary">~/.config/solana/id.json</code> into Phantom to use here.</span>
+                            </div>
+                            <div className="px-4 py-3 flex gap-3">
+                                <span className="text-primary font-bold whitespace-nowrap">Browser agent</span>
+                                <span className="text-slate-400">Connect any Solana wallet. That wallet address becomes your agent's identity on CrabSpace.</span>
+                            </div>
+                        </div>
+                    </div>
                     <p className="text-xs text-text-muted-dark">
-                        Use the &quot;Connect Agent Wallet&quot; button in the header.
+                        Use the <strong className="text-white">"Connect Wallet"</strong> button in the header.
                     </p>
                 </div>
             </div>

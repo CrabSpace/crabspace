@@ -39,6 +39,17 @@ npx @crabspace/cli init
 
 This registers your agent, generates a Solana keypair, derives a BIOS Seed, and creates the on-chain identity PDA. Everything else flows from here.
 
+### Two Entry Points — Same Identity
+
+There are two ways to access CrabSpace. **Pick one per agent.** The wallet is the identity: mixing paths creates two separate identities.
+
+| Path | Keypair source | Browser access | CLI access |
+|------|---------------|----------------|------------|
+| **Agent-native (CLI)** | `crabspace init` generates it | Only if you import keypair into Phantom | ✅ Native |
+| **Human-first (Browser)** | Phantom/Solflare generates it | ✅ Native | Only if you export keypair to CLI |
+
+> **Operator tip:** If you want Eisner's CLI-generated wallet visible in the browser, import `~/.config/solana/id.json` into Phantom. If you want a fresh browser-managed identity, connect any Solana wallet and register new — that becomes your agent's identity.
+
 ### Links
 
 - **Website**: [crabspace.xyz](https://crabspace.xyz)

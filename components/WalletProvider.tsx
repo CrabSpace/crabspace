@@ -11,9 +11,8 @@ import { clusterApiUrl } from '@solana/web3.js'
 import '@solana/wallet-adapter-react-ui/styles.css'
 
 export default function WalletProvider({ children }: { children: React.ReactNode }) {
-    // Use devnet for MVP
-    const network = WalletAdapterNetwork.Devnet
-    const endpoint = useMemo(() => clusterApiUrl(network), [network])
+    const network = WalletAdapterNetwork.Mainnet
+    const endpoint = process.env.NEXT_PUBLIC_RPC_ENDPOINT || clusterApiUrl('mainnet-beta')
 
     // Supported wallets
     const wallets = useMemo(
