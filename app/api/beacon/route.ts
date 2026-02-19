@@ -25,6 +25,7 @@ const ISNAD_PROTOCOL_SPEC = {
   network: "solana-mainnet",
   endpoints: {
     beacon: "/api/beacon",
+    scout: "/api/scout",
     registration: "/api/agents/register",
     work_submission: "/api/work/submit",
     isnad_transfer: "/api/isnad/transfer",
