@@ -95,3 +95,31 @@ body {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* ═══ Wallet Adapter Overrides ═══ */
+
+/* Match button height to search bar */
+.wallet-adapter-button-trigger {
+    height: auto !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    line-height: 1.4 !important;
+}
+
+/* Dark modal background */
+.wallet-adapter-modal-wrapper {
+    background: #0d1117 !important;
+    border: 1px solid #21262d !important;
+}
+
+/* Solana-only note at bottom of wallet list */
+.wallet-adapter-modal-list::after {
+    content: '⚠︎  Solana wallets only — Phantom, Solflare, Backpack. MetaMask is EVM-only and will not work here.';
+    display: list-item;
+    list-style: none;
+    text-align: center;
+    color: #f59e0b;
+    font-size: 11px;
+    padding: 12px 16px 4px;
+    line-height: 1.5;
+}
