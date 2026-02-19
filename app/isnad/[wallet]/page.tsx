@@ -175,8 +175,8 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             </div>
                         </div>
 
-                        {/* BIOS Seed Bar — full width input */}
-                        <div className="flex items-center gap-3 w-full bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">
+                        {/* BIOS Seed Bar — constrained width, matches modal */}
+                        <div className="flex items-center gap-3 max-w-sm bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">
                             <div className="text-xl flex-shrink-0">🛡️</div>
                             <input
                                 type="password"
@@ -192,7 +192,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                     } catch { }
                                     setBiosSeed(val)
                                 }}
-                                placeholder="Paste your isnad_ptr value or full BIOS Seed JSON here to decrypt your work history"
+                                placeholder="Enter BIOS Seed here to unlock"
                                 className="bg-transparent text-xs font-mono flex-1 min-w-0 focus:outline-none placeholder:text-amber-500/50"
                             />
                             <button
@@ -283,8 +283,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                     <div className="col-span-1 flex items-center">
                                         {entry.entryType === 'will' ? <span className="badge-will whitespace-nowrap">📜 WILL</span> :
                                             entry.peerVerified ? <span className="badge-verified whitespace-nowrap">✓✓ Peer</span> :
-                                                entry.onChainSig ? <span className="badge-self !bg-blue-500/10 !text-blue-500 border-blue-500/30 whitespace-nowrap">🔗 Anchored</span> :
-                                                    <span className="badge-self whitespace-nowrap">✓ Self</span>}
+                                                <span className="badge-self whitespace-nowrap">✓ Self</span>}
                                     </div>
                                     <div className="col-span-5 mono text-xs text-text-muted-dark truncate">
                                         {entry.entryHash}

@@ -61,6 +61,7 @@ export default function LandingPage() {
                         agentWallet: e.agent_wallet,
                         entryType: 'work',
                         peerVerified: e.verified,
+                        onChainSig: e.on_chain_sig,
                         description: e.description || e.project_name,
                         entryHash: e.work_hash || '0x...',
                         collaboratorWallet: e.client_wallet,
@@ -142,6 +143,22 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* Genesis Grant Callout */}
+            <section className="max-w-[1400px] mx-auto px-6 pb-6">
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">🌱</span>
+                        <div>
+                            <span className="text-xs font-black uppercase tracking-widest text-amber-400">Genesis Grant</span>
+                            <p className="text-sm text-white font-medium mt-0.5">Your first 10 entries are on us — <span className="text-amber-300">no SOL required to start.</span></p>
+                        </div>
+                    </div>
+                    <Link href="/humans" className="text-[10px] font-black uppercase tracking-widest text-amber-950 bg-amber-400 hover:bg-amber-300 transition-colors px-5 py-2 rounded-lg whitespace-nowrap flex-shrink-0">
+                        Learn More →
+                    </Link>
+                </div>
+            </section>
+
             {/* Latest Work Journal Entries */}
             <section className="max-w-[1400px] mx-auto px-6 pb-20">
                 <div className="card overflow-hidden">
@@ -196,6 +213,8 @@ export default function LandingPage() {
                                         <span className="badge-will">📜 WILL</span>
                                     ) : entry.peerVerified ? (
                                         <span className="badge-verified">✓✓ Peer</span>
+                                    ) : entry.onChainSig ? (
+                                        <span className="badge-self !bg-blue-500/10 !text-blue-500 border-blue-500/30 whitespace-nowrap">🔗 Anchored</span>
                                     ) : (
                                         <span className="badge-self">✓ Self</span>
                                     )}
