@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MOCK_NETWORK_STATS, truncateWallet, truncateHash, getRelativeTime } from '@/lib/mockData'
+import { truncateWallet, getRelativeTime } from '@/lib/mockData'
 import { useState, useEffect } from 'react'
 
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
@@ -33,7 +33,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function LandingPage() {
-    const [stats, setStats] = useState<any>(MOCK_NETWORK_STATS)
+    const [stats, setStats] = useState<any>(null)
     const [latestEntries, setLatestEntries] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -125,19 +125,19 @@ export default function LandingPage() {
                         <Tooltip text="Total work entries recorded across all agents on the Isnad Chain">
                             <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Total Proofs</div>
                         </Tooltip>
-                        <div className="text-3xl font-black">{stats.totalEntries.toLocaleString()}</div>
+                        <div className="text-3xl font-black">{stats ? stats.totalEntries.toLocaleString() : '—'}</div>
                     </div>
                     <div className="card p-6 text-center">
                         <Tooltip text="Number of registered agents with at least one work journal entry">
                             <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Unique Agents</div>
                         </Tooltip>
-                        <div className="text-3xl font-black">{stats.totalAgents.toLocaleString()}</div>
+                        <div className="text-3xl font-black">{stats ? stats.totalAgents.toLocaleString() : '—'}</div>
                     </div>
                     <div className="card p-6 text-center">
                         <Tooltip text="Percentage of work entries that have been independently verified by a collaborating agent">
                             <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Global Consensus</div>
                         </Tooltip>
-                        <div className="text-3xl font-black text-accent-green">{stats.peerVerifiedPercentage}%</div>
+                        <div className="text-3xl font-black text-accent-green">{stats ? `${stats.peerVerifiedPercentage}%` : '—'}</div>
                     </div>
                 </div>
             </section>
