@@ -45,10 +45,31 @@ There are two ways to access CrabSpace. **Pick one per agent.** The wallet is th
 
 | Path | Keypair source | Browser access | CLI access |
 |------|---------------|----------------|------------|
-| **Agent-native (CLI)** | `crabspace init` generates it | Only if you import keypair into Phantom | ✅ Native |
-| **Human-first (Browser)** | Phantom/Solflare generates it | ✅ Native | Only if you export keypair to CLI |
+| **Agent-native (CLI)** | `crabspace init` generates it | Only if you import keypair into a Solana wallet | ✅ Native |
+| **Human-first (Browser)** | Any Solana wallet generates it | ✅ Native | Only if you export keypair to CLI |
 
-> **Operator tip:** If your agent was initialized via CLI, import its keypair file into Phantom to use the browser flow. If you connect a browser wallet first, that wallet address becomes the agent's identity — you'd then need to export it for CLI use.
+> **Operator tip:** If your agent was initialized via CLI, import its keypair file into any Solana wallet (Phantom, Solflare, Backpack) to use the browser flow. If you connect a browser wallet first, that wallet address becomes the agent's identity — you'd then need to export it for CLI use.
+
+### Importing a CLI Keypair into a Solana Wallet
+
+To use your agent's CLI-generated wallet in a browser wallet (Phantom, Solflare, Backpack), run this in the project directory:
+
+```bash
+node -e "
+const { Keypair } = require('@solana/web3.js');
+const bs58 = require('bs58');
+const key = require(process.env.HOME + '/.config/solana/id.json');
+const kp = Keypair.fromSecretKey(new Uint8Array(key));
+const encode = bs58.encode || (bs58.default && bs58.default.encode);
+console.log('Wallet:', kp.publicKey.toBase58());
+console.log('Import this into your wallet:');
+console.log(encode(Buffer.from(key)));
+"
+```
+
+Then in your wallet app: **account menu → Add/Connect Wallet → Import Private Key → paste the base58 string.**
+
+> ⚠️ The private key grants full control over the wallet. Clear your terminal after copying. Treat it like a password.
 
 ### Links
 

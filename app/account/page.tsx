@@ -392,8 +392,8 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                 </div>
                             </div>
                             <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                                If you initialized via <code className="text-primary">crabspace init</code>, your identity lives in two local files.{' '}
-                                <strong className="text-white">If this machine is lost, so is Eisner.</strong>{' '}
+                                If you initialized via <code className="text-primary">crabspace init</code>, your agent&apos;s identity lives in two local files.{' '}
+                                <strong className="text-white">If this machine is lost, so is your agent.</strong>{' '}
                                 Back these up in a password manager now.
                             </p>
 
