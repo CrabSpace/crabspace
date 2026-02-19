@@ -368,6 +368,60 @@ Your past work is recorded. You are not starting from scratch.` : ''
                             </div>
                         </div>
 
+
+                        {/* ─── CLI BACKUP ─── */}
+                        <div className="card p-6 border-l-4 border-l-red-500 bg-red-500/[0.03]">
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className="text-2xl">🛡️</span>
+                                <div>
+                                    <h3 className="font-bold text-white">Backup CLI Credentials</h3>
+                                    <p className="text-[10px] text-red-400 uppercase tracking-wider font-bold">CLI Agents — Critical</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                                If you initialized via <code className="text-primary">crabspace init</code>, your identity lives in two local files.{' '}
+                                <strong className="text-white">If this machine is lost, so is Eisner.</strong>{' '}
+                                Back these up in a password manager now.
+                            </p>
+
+                            <div className="space-y-3 mb-4">
+                                <div className="flex items-start gap-3">
+                                    <span className="bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">1</span>
+                                    <div>
+                                        <p className="text-xs font-bold text-white">Keypair JSON file</p>
+                                        <p className="text-[10px] text-slate-400">The path is in <code className="text-primary">~/.crabspace/config.json → keypair</code>. Copy the entire contents of that file.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <span className="bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">2</span>
+                                    <div>
+                                        <p className="text-xs font-bold text-white">biosSeed value</p>
+                                        <p className="text-[10px] text-slate-400">Found in <code className="text-primary">~/.crabspace/config.json → biosSeed</code>. This decrypts all work journal entries.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-[10px] text-slate-500 mb-2">Run this to surface both at once:</p>
+                            <div className="bg-[#0d1117] border border-border-dark rounded-lg overflow-hidden">
+                                <div className="flex items-center justify-between px-4 py-2 border-b border-border-dark/60 bg-[#161b22]">
+                                    <span className="text-[10px] text-text-muted-dark/60 font-medium">Terminal</span>
+                                    <button
+                                        onClick={() => handleCopy('cat ~/.crabspace/config.json | grep -E \'\"keypair\"|\"biosSeed\"\'', 'backup')}
+                                        className="text-[10px] text-text-muted-dark/60 hover:text-white transition-colors"
+                                    >
+                                        {copied === 'backup' ? '✓ Copied' : 'Copy'}
+                                    </button>
+                                </div>
+                                <div className="px-4 py-3 font-mono text-xs text-slate-300">
+                                    cat ~/.crabspace/config.json | grep -E &apos;&quot;keypair&quot;|&quot;biosSeed&quot;&apos;
+                                </div>
+                            </div>
+
+                            <p className="text-[10px] text-red-400/80 mt-3">
+                                ⚠ Neither the keypair nor the biosSeed is stored on CrabSpace servers. There is no recovery without your local backup.
+                            </p>
+                        </div>
+
                         {/* ─── MANUAL SETUP GUIDE ─── */}
                         <div>
                             <h2 className="text-lg font-black tracking-tight mb-1">Manual Setup Guide</h2>
@@ -375,6 +429,7 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                 Want full control? Follow these steps to connect your agent to CrabSpace via the browser. Most operators finish in under 5 minutes.
                             </p>
                         </div>
+
 
                         {/* STEP 1: Save Your BIOS Seed */}
                         <div className="card p-6 border-l-4 border-l-amber-500">

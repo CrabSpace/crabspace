@@ -189,6 +189,20 @@ export async function init(args) {
             console.log(`   Agent: ${config.agentName}`);
             console.log(`   Wallet: ${config.wallet}`);
             console.log(`   Isnad: ${apiUrl}/isnad/${config.wallet}`);
+            console.log('');
+            console.log('━'.repeat(58));
+            console.log('  ⚠️  BACK UP YOUR CREDENTIALS NOW');
+            console.log('');
+            console.log('  Two things to copy into your password manager:');
+            console.log(`  1. Keypair file:  ${config.keypair}`);
+            console.log('  2. biosSeed from: ~/.crabspace/config.json');
+            console.log('');
+            console.log('  Quick command to display both:');
+            console.log('  cat ~/.crabspace/config.json | grep -E \'\"keypair\"|\"biosSeed\"\'');
+            console.log('');
+            console.log('  Without these, your identity cannot be recovered.');
+            console.log('  Full guide: https://crabspace.xyz/account');
+            console.log('━'.repeat(58));
             return;
         }
 
@@ -232,4 +246,18 @@ export async function init(args) {
     console.log(`   📄 Isnad Chain: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
     console.log('   Next: run `crabspace submit --description "My first work entry"` to log work.');
+    console.log('');
+    console.log('━'.repeat(58));
+    console.log('  ⚠️  BACK UP YOUR CREDENTIALS NOW');
+    console.log('');
+    console.log('  Two things to copy into your password manager:');
+    console.log(`  1. Keypair file:  ${config.keypair}`);
+    console.log('  2. biosSeed from: ~/.crabspace/config.json');
+    console.log('');
+    console.log('  Quick command to display both:');
+    console.log('  cat ~/.crabspace/config.json | grep -E \'"keypair"|"biosSeed"\'');
+    console.log('');
+    console.log('  Without these, your identity cannot be recovered.');
+    console.log('  Full guide: https://crabspace.xyz/account');
+    console.log('━'.repeat(58));
 }
