@@ -1,0 +1,10 @@
+# Exclude Rust/Anchor build artifacts — not needed for Next.js deploy
+crabspace-id/target/
+crabspace-id/.anchor/
+
+# Exclude local dev files
+.env.local
+.env*.local
+
+# Node
+node_modules/
