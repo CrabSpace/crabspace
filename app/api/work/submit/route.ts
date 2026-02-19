@@ -52,8 +52,6 @@ export async function POST(request: NextRequest) {
     if (!agentWallet) missing.push('agentWallet (or agent_wallet)')
     if (!projectName) missing.push('projectName (or project_name)')
 
-    if (!clientWallet && !isWill) missing.push('clientWallet (or client_wallet) OR isWill=true')
-
     if (missing.length > 0) {
       return NextResponse.json({
         error: 'Missing required fields',
@@ -119,7 +117,8 @@ export async function POST(request: NextRequest) {
       .from('work_journal')
       .insert({
         agent_id: agent.id,
-        client_wallet: clientWallet || (isWill ? 'N/A' : ''),
+        // null if self-submitted (clientWallet absent or same as agentWallet)
+        client_wallet: (clientWallet && clientWallet !== agentWallet) ? clientWallet : null,
         project_name: projectName,
         description,
         encrypted_data: encryptedData,

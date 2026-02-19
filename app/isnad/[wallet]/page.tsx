@@ -105,8 +105,17 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                     peerVerificationRate: data.workJournal.length > 0
                         ? Math.round((data.workJournal.filter((e: any) => e.verified).length / data.workJournal.length) * 100)
                         : 0,
-                    collaboratorCount: [...new Set(data.workJournal.map((e: any) => e.client_wallet))].length,
-                    collaborators: [...new Set(data.workJournal.map((e: any) => e.client_wallet))] as string[],
+                    // Only count genuine collaborators — exclude null and self-references
+                    collaboratorCount: [...new Set(
+                        data.workJournal
+                            .map((e: any) => e.client_wallet)
+                            .filter((w: any) => w && w !== data.agent.wallet_address)
+                    )].length,
+                    collaborators: [...new Set(
+                        data.workJournal
+                            .map((e: any) => e.client_wallet)
+                            .filter((w: any) => w && w !== data.agent.wallet_address)
+                    )] as string[],
                 }
 
                 const entries: IsnadEntry[] = data.workJournal.map((e: any, index: number) => {

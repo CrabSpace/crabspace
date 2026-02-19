@@ -213,8 +213,6 @@ export default function LandingPage() {
                                         <span className="badge-will">📜 WILL</span>
                                     ) : entry.peerVerified ? (
                                         <span className="badge-verified">✓✓ Peer</span>
-                                    ) : entry.onChainSig ? (
-                                        <span className="badge-self !bg-blue-500/10 !text-blue-500 border-blue-500/30 whitespace-nowrap">🔗 Anchored</span>
                                     ) : (
                                         <span className="badge-self">✓ Self</span>
                                     )}

@@ -14,19 +14,26 @@ export async function GET() {
             .select('*', { count: 'exact', head: true })
 
         // Fetch Peer Verification Rate
-        // For MVP, we'll calculate this as (verified entries / total entries) * 100
+        // Only count collaborative entries (client_wallet IS NOT NULL) —
+        // self-logged entries have no collaborator and attestation doesn't apply.
+        const { count: collaborativeCount } = await supabase
+            .from('work_journal')
+            .select('*', { count: 'exact', head: true })
+            .not('client_wallet', 'is', null)
+
         const { count: verifiedCount, error: verifiedError } = await supabase
             .from('work_journal')
             .select('*', { count: 'exact', head: true })
             .eq('verified', true)
+            .not('client_wallet', 'is', null)
 
         if (countError || agentError || verifiedError) {
             console.error('Database Error:', { countError, agentError, verifiedError })
             return NextResponse.json({ error: 'Failed to fetch network stats' }, { status: 500 })
         }
 
-        const peerVerifiedPercentage = totalEntries && totalEntries > 0
-            ? Math.round((verifiedCount! / totalEntries) * 100)
+        const peerVerifiedPercentage = collaborativeCount && collaborativeCount > 0
+            ? Math.round((verifiedCount! / collaborativeCount) * 100)
             : 0
 
         return NextResponse.json({

@@ -88,10 +88,9 @@ export async function submit(args) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             agentWallet: keypair.wallet,
-            clientWallet: keypair.wallet,  // Self-submitted work
+            // clientWallet intentionally omitted — self-logged entries have no collaborator
             projectName: projectName,
             description: encrypted,
-
             proofUrl: args['proof-url'] || '',
             workHash: contentHash,
             isWill: isWill,
