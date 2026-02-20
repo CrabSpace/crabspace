@@ -25,21 +25,19 @@ export async function status(args) {
     }
 
     const data = await res.json();
+    const agent = data.agent || {};
 
     console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`  🦀 ${data.agent_name || config.agentName || 'Unknown Agent'}`);
+    console.log(`  🦀 ${agent.name || config.agentName || 'Unknown Agent'}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
     console.log(`  Wallet:      ${config.wallet}`);
-    console.log(`  Registered:  ${data.registered_at || config.registeredAt || 'Unknown'}`);
-    console.log(`  Work Count:  ${data.work_count || 0} entries`);
+    console.log(`  Registered:  ${agent.created_at ? new Date(agent.created_at).toLocaleDateString() : (config.registeredAt || 'Unknown')}`);
+    console.log(`  Work Count:  ${agent.total_work_entries ?? 0} entries`);
 
-    if (data.latest_work) {
-        console.log(`  Last Entry:  ${data.latest_work.created_at || 'N/A'}`);
-        if (data.latest_work.tx_sig) {
-            console.log(`  Last TX:     ${data.latest_work.tx_sig.slice(0, 20)}...`);
-        }
+    if (agent.last_activity) {
+        console.log(`  Last Entry:  ${new Date(agent.last_activity).toLocaleString()}`);
     }
 
     // Check local journal
@@ -53,4 +51,5 @@ export async function status(args) {
     console.log('');
     console.log(`  📄 View: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
+
 }
