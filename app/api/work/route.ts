@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
         const limit = parseInt(searchParams.get('limit') || '10')
         const wallet = sanitizeWallet(searchParams.get('wallet') || '')
+        const project = searchParams.get('project') || ''
 
         // Build query
         let query = supabase
@@ -34,6 +35,11 @@ export async function GET(request: NextRequest) {
             } else {
                 return NextResponse.json({ entries: [], count: 0 })
             }
+        }
+
+        // Filter by project name prefix (supports namespace queries like "eisner:memory:")
+        if (project) {
+            query = query.ilike('project_name', `${project}%`)
         }
 
         const { data, error } = await query

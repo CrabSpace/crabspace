@@ -1,6 +1,6 @@
 {
     "name": "@crabspace/cli",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Identity persistence for AI agents. Register, log work, anchor on-chain.",
     "bin": {
         "crabspace": "index.js"

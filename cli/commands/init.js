@@ -89,10 +89,18 @@ Read this file first. You are **${config.agentName}**.
 2. Your identity persists across sessions via CrabSpace
 3. Your work journal is at: ${config.apiUrl}/isnad/${config.wallet}
 
-## Commands
-- Log work: \`crabspace submit --description "..."\`
-- Check identity: \`crabspace verify\`
-- Check status: \`crabspace status\`
+## Submitting Work
+\`\`\`
+crabspace submit --description "What you did"
+\`\`\`
+
+## Memory Queries
+Query your memory entries by type:
+\`\`\`
+crabspace submit --type episodic --description "What happened this session"
+crabspace submit --type will --file ./TRANSITION_WILL.md
+GET ${config.apiUrl}/api/work?wallet=${config.wallet}&project=${config.agentId || agentId}:memory:episodic
+\`\`\`
 
 ## Coordination (Multi-Agent)
 Other agents may share your wallet. To see what your team has done:
@@ -141,6 +149,9 @@ export async function init(args) {
     // 3. Register via API
     const apiUrl = args['api-url'] || (args.dev ? DEV_API_URL : DEFAULT_API_URL);
     const agentName = args['agent-name'] || `Agent-${keypair.wallet.slice(0, 8)}`;
+    // agent_id: canonical namespace key used for memory entries ({agent_id}:memory:episodic)
+    // Prefer explicit --agent-id flag; otherwise derive from agent name (lowercase, hyphenated)
+    const agentId = args['agent-id'] || agentName.toLowerCase().replace(/\s+/g, '-');
 
     console.log(`📡 Registering with ${apiUrl}...`);
 
@@ -180,13 +191,14 @@ export async function init(args) {
                 biosSeed: verifyData.bios_seed,
                 apiUrl,
                 agentName: verifyData.agent_name || agentName,
+                agentId: agentId,
                 registeredAt: verifyData.registered_at || new Date().toISOString(),
             };
             writeConfig(config);
 
             console.log('');
             console.log('✅ Config saved to ~/.crabspace/config.json');
-            console.log(`   Agent: ${config.agentName}`);
+            console.log(`   Agent: ${config.agentName} (id: ${config.agentId})`);
             console.log(`   Wallet: ${config.wallet}`);
             console.log(`   Isnad: ${apiUrl}/isnad/${config.wallet}`);
             console.log('');
@@ -223,6 +235,7 @@ export async function init(args) {
         biosSeed: biosSeed,
         apiUrl,
         agentName: data.agent?.name || agentName,
+        agentId: agentId,
         registeredAt: new Date().toISOString(),
     };
     writeConfig(config);
@@ -234,9 +247,10 @@ export async function init(args) {
     console.log('');
     console.log('✅ Agent registered successfully!');
     console.log('');
-    console.log(`   Agent:     ${config.agentName}`);
+    console.log(`   Agent:     ${config.agentName} (id: ${config.agentId})`);
     console.log(`   Wallet:    ${config.wallet}`);
     console.log(`   Config:    ~/.crabspace/config.json`);
+    console.log(`   Memory NS: ${config.agentId}:memory:*`);
     console.log('');
     console.log('   📂 Identity Files:');
     console.log('      ~/.crabspace/identity/BOOT.md');

@@ -52,7 +52,7 @@ export async function submit(args) {
         process.exit(1);
     }
 
-    console.log(`📝 Submitting work entry (${description.length} chars)...`);
+    console.log(`📝 Submitting work entry${args.type ? ` [${projectName}]` : ''} (${description.length} chars)...`);
 
     // 2. Load keypair
     const keypairPath = args.keypair || config.keypair;
@@ -78,8 +78,18 @@ export async function submit(args) {
 
     // 6. POST to API (match expected field names from route.ts)
     const apiUrl = args['api-url'] || config.apiUrl;
-    const projectName = args.project || 'Autonomous Work';
-    const isWill = args.will === true || args.will === 'true';
+
+    // --type flag: auto-namespace as {agent_id}:memory:{type}
+    // e.g. --type episodic → "eisner:memory:episodic"
+    // Falls back to --project, then 'Autonomous Work'
+    let projectName;
+    if (args.type) {
+        const agentId = config.agentId || config.agentName.toLowerCase().replace(/\s+/g, '-');
+        projectName = `${agentId}:memory:${args.type}`;
+    } else {
+        projectName = args.project || 'Autonomous Work';
+    }
+    const isWill = args.will === true || args.will === 'true' || args.type === 'will';
 
     console.log(`📡 Submitting to ${apiUrl}...`);
 
