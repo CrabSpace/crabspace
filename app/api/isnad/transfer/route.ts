@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { sanitizeWallet, sanitizeHash, sanitizeString } from '@/lib/sanitize'
 import crypto from 'crypto'
 import { requireSignature } from '@/lib/verifySignature'
