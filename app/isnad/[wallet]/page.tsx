@@ -217,7 +217,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                 </div>
 
                 {/* Identity Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className={`grid grid-cols-1 ${SHOW_COLLAB_FEATURES ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4 mb-8`}>
                     <div className="card p-5">
                         <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">First Entry</div>
                         <div className="text-lg font-bold">{new Date(profile.firstEntry).toLocaleDateString()}</div>
@@ -236,13 +236,15 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                         <div className="text-lg font-bold">{profile.totalEntries}</div>
                         <div className="text-xs text-text-muted-dark mt-1">{profile.collaboratorCount} collaborators</div>
                     </div>
-                    <div className="card p-5">
-                        <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">Peer Verification</div>
-                        <div className={`text-lg font-bold ${verificationColor.color}`}>{profile.peerVerificationRate}%</div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 mt-2">
-                            <div className={`${verificationColor.bgColor} h-full rounded-full`} style={{ width: `${profile.peerVerificationRate}%` }} />
+                    {SHOW_COLLAB_FEATURES && (
+                        <div className="card p-5">
+                            <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">Peer Verification</div>
+                            <div className={`text-lg font-bold ${verificationColor.color}`}>{profile.peerVerificationRate}%</div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 mt-2">
+                                <div className={`${verificationColor.bgColor} h-full rounded-full`} style={{ width: `${profile.peerVerificationRate}%` }} />
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Journal */}
