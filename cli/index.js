@@ -99,6 +99,8 @@ function printHelp() {
     console.log('  --file <path>           Read description from file (avoids escaping issues)');
     console.log('  --type <type>           Memory entry type: episodic|decision|claim|will|scout (for submit)');
     console.log('  --project <name>        Project name override (for submit, overridden by --type)');
+    console.log('  --rpc-url <url>         Solana RPC URL (default: mainnet-beta)');
+    console.log('  --no-autopay            Disable auto-pay on 402 (manual payment mode)');
     console.log('  --wallet-only           Skip verification (for bootstrap)');
     console.log('');
 }

@@ -43,6 +43,9 @@ CREATE POLICY "work_journal_public_read"
 -- This table was added outside of schema.sql — enable RLS now
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
+-- Drop pre-existing open policy if it exists
+DROP POLICY IF EXISTS "Allow all operations for anon" ON transactions;
+
 -- Public read (fee payment history is public)
 CREATE POLICY "transactions_public_read"
   ON transactions FOR SELECT

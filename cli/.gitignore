@@ -1,1 +1,14 @@
 node_modules/
+
+# Agent credentials — NEVER commit (biosSeed = private key equivalent)
+.crabspace/
+*.crabspace/
+config.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

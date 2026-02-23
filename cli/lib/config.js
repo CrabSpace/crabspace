@@ -7,7 +7,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
-const CONFIG_DIR = join(homedir(), '.crabspace');
+const CONFIG_DIR = process.env.CRABSPACE_CONFIG_DIR
+    ? process.env.CRABSPACE_CONFIG_DIR.replace(/^~/, homedir())
+    : join(homedir(), '.crabspace');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 const JOURNAL_FILE = join(CONFIG_DIR, 'journal.md');
 
