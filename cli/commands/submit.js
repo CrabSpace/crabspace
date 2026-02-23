@@ -14,7 +14,7 @@ import { Keypair as SolKeypair } from '@solana/web3.js';
 import { loadKeypair, signForAction } from '../lib/sign.js';
 import { encryptData } from '../lib/encrypt.js';
 import { requireConfig, appendJournal } from '../lib/config.js';
-import { anchorOnChain } from '../lib/anchor.js';
+import { anchorOnChain, payFee } from '../lib/anchor.js';
 
 export async function submit(args) {
     const config = requireConfig();
@@ -52,7 +52,19 @@ export async function submit(args) {
         process.exit(1);
     }
 
-    console.log(`📝 Submitting work entry (${description.length} chars)...`);
+    // Resolve project name early so it's available for logging
+    // --type flag: auto-namespace as {agent_id}:memory:{type}
+    // e.g. --type episodic → "eisner:memory:episodic"
+    let projectName;
+    if (args.type) {
+        const agentId = config.agentId || config.agentName.toLowerCase().replace(/\s+/g, '-');
+        projectName = `${agentId}:memory:${args.type}`;
+    } else {
+        projectName = args.project || 'Autonomous Work';
+    }
+    const isWill = args.will === true || args.will === 'true' || args.type === 'will';
+
+    console.log(`📝 Submitting work entry${args.type ? ` [${projectName}]` : ''} (${description.length} chars)...`);
 
     // 2. Load keypair
     const keypairPath = args.keypair || config.keypair;
@@ -76,19 +88,15 @@ export async function submit(args) {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
-    // 6. POST to API (match expected field names from route.ts)
     const apiUrl = args['api-url'] || config.apiUrl;
-    const projectName = args.project || 'Autonomous Work';
-    const isWill = args.will === true || args.will === 'true';
+    const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
 
-    console.log(`📡 Submitting to ${apiUrl}...`);
-
-    const res = await fetch(`${apiUrl}/api/work/submit`, {
+    // POST to API — handle 402 auto-pay transparently
+    let res = await fetch(`${apiUrl}/api/work/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             agentWallet: keypair.wallet,
-            // clientWallet intentionally omitted — self-logged entries have no collaborator
             projectName: projectName,
             description: encrypted,
             proofUrl: args['proof-url'] || '',
@@ -98,6 +106,49 @@ export async function submit(args) {
             message,
         }),
     });
+
+    // Auto-pay on 402 (unless explicitly disabled)
+    if (res.status === 402 && !args['no-autopay']) {
+        const paymentInfo = await res.json();
+        const costLamports = paymentInfo.cost_lamports;
+        const treasuryAddress = paymentInfo.treasury_address;
+
+        console.log('');
+        console.log(`💳 Genesis grant exhausted. Auto-paying fee...`);
+        console.log(`   Cost:     ${costLamports} lamports ($${(costLamports / 1e9 * 170).toFixed(4)} est.)`);
+        console.log(`   Treasury: ${treasuryAddress}`);
+
+        // Load raw keypair for signing the SOL transfer
+        const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
+        const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
+
+        let feeTxSig;
+        try {
+            feeTxSig = await payFee(solKeypair, treasuryAddress, costLamports, rpcUrl);
+            console.log(`   Fee TX:   ${feeTxSig}`);
+        } catch (payErr) {
+            throw new Error(`Auto-pay failed: ${payErr.message}. Run with --no-autopay and pay manually.`);
+        }
+
+        // Retry submission with fee confirmed
+        console.log('🔄 Retrying submission with fee paid...');
+        res = await fetch(`${apiUrl}/api/work/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agentWallet: keypair.wallet,
+                projectName: projectName,
+                description: encrypted,
+                proofUrl: args['proof-url'] || '',
+                workHash: contentHash,
+                isWill: isWill,
+                fee_paid_lamports: costLamports,
+                fee_tx_sig: feeTxSig,
+                signature,
+                message,
+            }),
+        });
+    }
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));

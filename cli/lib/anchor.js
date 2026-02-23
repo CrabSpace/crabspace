@@ -8,6 +8,8 @@ import {
     Connection,
     Keypair,
     PublicKey,
+    SystemProgram,
+    Transaction,
     TransactionMessage,
     VersionedTransaction,
     TransactionInstruction,
@@ -84,6 +86,39 @@ export async function anchorOnChain(keypair, workHash, rpcUrl = 'https://api.dev
 
     // Wait for confirmation
     await connection.confirmTransaction(signature, 'confirmed');
+
+    return signature;
+}
+
+/**
+ * Pay the CrabSpace work entry fee by transferring lamports to the treasury.
+ * Called automatically by submit.js when the API returns HTTP 402.
+ *
+ * @param {Keypair} keypair       - Agent's Solana keypair (payer)
+ * @param {string} treasuryAddress - Treasury wallet address from 402 response
+ * @param {number} lamports       - Amount to send (from 402 response cost_lamports)
+ * @param {string} rpcUrl         - Solana RPC endpoint
+ * @returns {string} Transaction signature
+ */
+export async function payFee(keypair, treasuryAddress, lamports, rpcUrl = 'https://api.devnet.solana.com') {
+    const connection = new Connection(rpcUrl, 'confirmed');
+    const treasury = new PublicKey(treasuryAddress);
+
+    const tx = new Transaction().add(
+        SystemProgram.transfer({
+            fromPubkey: keypair.publicKey,
+            toPubkey: treasury,
+            lamports,
+        })
+    );
+
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = keypair.publicKey;
+    tx.sign(keypair);
+
+    const signature = await connection.sendRawTransaction(tx.serialize());
+    await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
 
     return signature;
 }

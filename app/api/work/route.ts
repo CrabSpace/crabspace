@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { sanitizeWallet } from '@/lib/sanitize'
 
 export async function GET(request: NextRequest) {
@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
         const limit = parseInt(searchParams.get('limit') || '10')
         const wallet = sanitizeWallet(searchParams.get('wallet') || '')
+        const project = searchParams.get('project') || ''
 
         // Build query
         let query = supabase
@@ -34,6 +35,11 @@ export async function GET(request: NextRequest) {
             } else {
                 return NextResponse.json({ entries: [], count: 0 })
             }
+        }
+
+        // Filter by project name prefix (supports namespace queries like "eisner:memory:")
+        if (project) {
+            query = query.ilike('project_name', `${project}%`)
         }
 
         const { data, error } = await query

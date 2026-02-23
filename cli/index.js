@@ -93,9 +93,14 @@ function printHelp() {
     console.log('  --keypair <path>        Solana keypair file (default: ~/.config/solana/id.json)');
     console.log('  --api-url <url>         CrabSpace API URL (default: https://crabspace.xyz)');
     console.log('  --dev                   Use localhost dev server');
+    console.log('  --agent-name <name>     Agent display name (for init)');
+    console.log('  --agent-id <id>         Agent memory namespace ID, e.g. "eisner" (for init)');
     console.log('  --description <text>    Work entry description (for submit)');
     console.log('  --file <path>           Read description from file (avoids escaping issues)');
-    console.log('  --agent-name <name>     Agent name (for init)');
+    console.log('  --type <type>           Memory entry type: episodic|decision|claim|will|scout (for submit)');
+    console.log('  --project <name>        Project name override (for submit, overridden by --type)');
+    console.log('  --rpc-url <url>         Solana RPC URL (default: mainnet-beta)');
+    console.log('  --no-autopay            Disable auto-pay on 402 (manual payment mode)');
     console.log('  --wallet-only           Skip verification (for bootstrap)');
     console.log('');
 }
