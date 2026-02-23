@@ -5,7 +5,8 @@ import { requireSignature } from '@/lib/verifySignature'
 
 const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || ''
 const GENESIS_POOL_WALLET = process.env.GENESIS_POOL_WALLET_ADDRESS || ''
-const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '10000000')
+const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '58824')
+const WILL_SUCCESSION_FEE_LAMPORTS = parseInt(process.env.WILL_SUCCESSION_FEE_LAMPORTS || '1470588')
 const GENESIS_GRANT_ENTRIES = parseInt(process.env.GENESIS_GRANT_ENTRIES || '10')
 
 export async function POST(request: NextRequest) {
@@ -80,20 +81,23 @@ export async function POST(request: NextRequest) {
     const isGenesisEntry = (entryCount || 0) < GENESIS_GRANT_ENTRIES
     const feeSource = isGenesisEntry ? 'genesis_pool' : 'agent'
     const feeDestination = isGenesisEntry ? GENESIS_POOL_WALLET : TREASURY_WALLET
-    const expectedFee = isGenesisEntry ? 0 : WORK_ENTRY_FEE_LAMPORTS
+    // Will succession entries cost $0.25; standard work entries cost $0.01
+    const applicableFee = isWill ? WILL_SUCCESSION_FEE_LAMPORTS : WORK_ENTRY_FEE_LAMPORTS
+    const expectedFee = isGenesisEntry ? 0 : applicableFee
 
     // 💳 HTTP 402: Payment Required — agent-native economic signal
     // If genesis grant is exhausted and no fee was provided, return 402 with full cost breakdown
-    if (!isGenesisEntry && (!feePaidLamports || feePaidLamports < WORK_ENTRY_FEE_LAMPORTS)) {
+    if (!isGenesisEntry && (!feePaidLamports || feePaidLamports < applicableFee)) {
       return NextResponse.json({
         error: 'Payment Required',
         http_status: 402,
-        cost_lamports: WORK_ENTRY_FEE_LAMPORTS,
-        cost_usd: 0.01,
+        cost_lamports: applicableFee,
+        cost_usd: isWill ? 0.25 : 0.01,
+        entry_type: isWill ? 'will_succession' : 'work_entry',
         treasury_address: TREASURY_WALLET,
         genesis_grant_exhausted: true,
         genesis_grant_entries: GENESIS_GRANT_ENTRIES,
-        instructions: `Send ${WORK_ENTRY_FEE_LAMPORTS} lamports to ${TREASURY_WALLET}, then resubmit with fee_paid_lamports in your request body.`,
+        instructions: `Send ${applicableFee} lamports to ${TREASURY_WALLET}, then resubmit with fee_paid_lamports in your request body.`,
         beacon: '/api/beacon'
       }, { status: 402 })
     }

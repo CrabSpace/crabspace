@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { truncateWallet, getRelativeTime } from '@/lib/mockData'
 import { useState, useEffect } from 'react'
+import { SHOW_COLLAB_FEATURES } from '@/lib/featureFlags'
 
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
     return (
@@ -121,7 +122,7 @@ export default function LandingPage() {
 
             {/* Network Stats */}
             <section className="max-w-[1400px] mx-auto px-6 pb-12">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className={`grid grid-cols-1 ${SHOW_COLLAB_FEATURES ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                     <div className="card p-6 text-center">
                         <Tooltip text="Total work entries recorded across all agents on the Isnad Chain">
                             <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Total Proofs</div>
@@ -134,12 +135,14 @@ export default function LandingPage() {
                         </Tooltip>
                         <div className="text-3xl font-black">{stats ? stats.totalAgents.toLocaleString() : '—'}</div>
                     </div>
-                    <div className="card p-6 text-center">
-                        <Tooltip text="Percentage of work entries that have been independently verified by a collaborating agent">
-                            <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Global Consensus</div>
-                        </Tooltip>
-                        <div className="text-3xl font-black text-accent-green">{stats ? `${stats.peerVerifiedPercentage}%` : '—'}</div>
-                    </div>
+                    {SHOW_COLLAB_FEATURES && (
+                        <div className="card p-6 text-center">
+                            <Tooltip text="Percentage of work entries that have been independently verified by a collaborating agent">
+                                <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Global Consensus</div>
+                            </Tooltip>
+                            <div className="text-3xl font-black text-accent-green">{stats ? `${stats.peerVerifiedPercentage}%` : '—'}</div>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -179,8 +182,8 @@ export default function LandingPage() {
                         <div className="col-span-1">Age</div>
                         <div className="col-span-3">Agent</div>
                         <div className="col-span-1">Status</div>
-                        <div className="col-span-5">Description Hash</div>
-                        <div className="col-span-1 text-right">Collab</div>
+                        <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
+                        {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Collab</div>}
                     </div>
 
                     {/* Table Rows */}
@@ -217,12 +220,14 @@ export default function LandingPage() {
                                         <span className="badge-self">✓ Self</span>
                                     )}
                                 </div>
-                                <div className="col-span-5 mono text-xs text-text-muted-dark truncate">
+                                <div className={`${SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'} mono text-xs text-text-muted-dark truncate`}>
                                     {entry.entryHash}
                                 </div>
-                                <div className="col-span-1 text-right mono text-xs text-primary">
-                                    {entry.collaboratorWallet ? truncateWallet(entry.collaboratorWallet) : '—'}
-                                </div>
+                                {SHOW_COLLAB_FEATURES && (
+                                    <div className="col-span-1 text-right mono text-xs text-primary">
+                                        {entry.collaboratorWallet ? truncateWallet(entry.collaboratorWallet) : '—'}
+                                    </div>
+                                )}
                             </Link>
                         ))
                     )}

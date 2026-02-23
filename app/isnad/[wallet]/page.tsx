@@ -13,6 +13,7 @@ import {
 import type { EntryType, IsnadEntry } from '@/lib/mockData'
 import { NetworkAttestationsCard } from '@/components/NetworkAttestationsCard'
 import { decryptData, isEncrypted } from '@/lib/crypto'
+import { SHOW_COLLAB_FEATURES } from '@/lib/featureFlags'
 
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
     return (
@@ -216,7 +217,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                 </div>
 
                 {/* Identity Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className={`grid grid-cols-1 ${SHOW_COLLAB_FEATURES ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4 mb-8`}>
                     <div className="card p-5">
                         <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">First Entry</div>
                         <div className="text-lg font-bold">{new Date(profile.firstEntry).toLocaleDateString()}</div>
@@ -235,17 +236,19 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                         <div className="text-lg font-bold">{profile.totalEntries}</div>
                         <div className="text-xs text-text-muted-dark mt-1">{profile.collaboratorCount} collaborators</div>
                     </div>
-                    <div className="card p-5">
-                        <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">Peer Verification</div>
-                        <div className={`text-lg font-bold ${verificationColor.color}`}>{profile.peerVerificationRate}%</div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 mt-2">
-                            <div className={`${verificationColor.bgColor} h-full rounded-full`} style={{ width: `${profile.peerVerificationRate}%` }} />
+                    {SHOW_COLLAB_FEATURES && (
+                        <div className="card p-5">
+                            <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">Peer Verification</div>
+                            <div className={`text-lg font-bold ${verificationColor.color}`}>{profile.peerVerificationRate}%</div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 mt-2">
+                                <div className={`${verificationColor.bgColor} h-full rounded-full`} style={{ width: `${profile.peerVerificationRate}%` }} />
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Journal */}
-                <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8">
+                <div className={`grid grid-cols-1 ${SHOW_COLLAB_FEATURES ? 'lg:grid-cols-[3fr_1fr]' : ''} gap-8`}>
                     <div className="card overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
                             <h2 className="text-sm font-bold uppercase tracking-wider">📋 Work Journal</h2>
@@ -270,8 +273,8 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             <div className="col-span-1">Age</div>
                             <div className="col-span-3">Agent</div>
                             <div className="col-span-1">Status</div>
-                            <div className="col-span-5">Description Hash</div>
-                            <div className="col-span-1 text-right">Collab</div>
+                            <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
+                            {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Collab</div>}
                         </div>
 
                         {/* Journal Entries */}
@@ -294,20 +297,24 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                             entry.peerVerified ? <span className="badge-verified whitespace-nowrap">✓✓ Peer</span> :
                                                 <span className="badge-self whitespace-nowrap">✓ Self</span>}
                                     </div>
-                                    <div className="col-span-5 mono text-xs text-text-muted-dark truncate">
+                                    <div className={`${SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'} mono text-xs text-text-muted-dark truncate`}>
                                         {entry.entryHash}
                                     </div>
-                                    <div className="col-span-1 text-right mono text-xs text-primary">
-                                        {entry.collaboratorWallet ? truncateWallet(entry.collaboratorWallet) : '—'}
-                                    </div>
+                                    {SHOW_COLLAB_FEATURES && (
+                                        <div className="col-span-1 text-right mono text-xs text-primary">
+                                            {entry.collaboratorWallet ? truncateWallet(entry.collaboratorWallet) : '—'}
+                                        </div>
+                                    )}
                                 </div>
                             )
                         })}
                     </div>
 
-                    <div className="space-y-6">
-                        <NetworkAttestationsCard agentWallet={wallet} entries={allEntries} />
-                    </div>
+                    {SHOW_COLLAB_FEATURES && (
+                        <div className="space-y-6">
+                            <NetworkAttestationsCard agentWallet={wallet} entries={allEntries} />
+                        </div>
+                    )}
                 </div>
             </div>
 
