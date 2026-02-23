@@ -13,8 +13,8 @@ import { sanitizeString, sanitizeHash } from '@/lib/sanitize'
 
 const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || ''
 const GENESIS_POOL_WALLET = process.env.GENESIS_POOL_WALLET_ADDRESS || ''
-const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '10000000')
-const WILL_SUCCESSION_FEE_LAMPORTS = parseInt(process.env.WILL_SUCCESSION_FEE_LAMPORTS || '250000000')
+const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '58824')
+const WILL_SUCCESSION_FEE_LAMPORTS = parseInt(process.env.WILL_SUCCESSION_FEE_LAMPORTS || '1470588')
 const GENESIS_GRANT_ENTRIES = parseInt(process.env.GENESIS_GRANT_ENTRIES || '10')
 
 const ISNAD_PROTOCOL_SPEC = {
