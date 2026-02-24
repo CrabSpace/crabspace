@@ -19,6 +19,11 @@ import { verify } from './commands/verify.js';
 import { status } from './commands/status.js';
 import { env } from './commands/env.js';
 import { bootstrap } from './commands/bootstrap.js';
+import { boot } from './commands/boot.js';
+import { readConfig, configExists } from './lib/config.js';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 
 const command = process.argv[2];
 const args = parseArgs(process.argv.slice(3));
@@ -44,8 +49,15 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.0');
+    console.log('🦀 CrabSpace CLI v0.2.1');
     console.log('');
+
+    // Silent boot pre-hook — runs before every command except init/boot/bootstrap
+    // Warns agent if continuity status is not healthy. Cached 1h locally.
+    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', '--help', '-h', undefined];
+    if (!SKIP_PREHOOK.includes(command) && configExists()) {
+        await runBootPrehook();
+    }
 
     switch (command) {
         case 'init':
@@ -65,6 +77,9 @@ async function main() {
             break;
         case 'bootstrap':
             await bootstrap(args);
+            break;
+        case 'boot':
+            await boot(args);
             break;
         case '--help':
         case '-h':
@@ -86,6 +101,7 @@ function printHelp() {
     console.log('  submit      Submit encrypted work journal entry');
     console.log('  verify      Re-orient: fetch identity from CrabSpace');
     console.log('  status      Show Isnad Chain summary');
+    console.log('  boot        Show full boot context (identity, status, nextAction)');
     console.log('  env         Show or switch environment (production/dev)');
     console.log('  bootstrap   One-command init + verify (fastest onboarding)');
     console.log('');
@@ -102,6 +118,59 @@ function printHelp() {
     console.log('  --rpc-url <url>         Solana RPC URL (default: mainnet-beta)');
     console.log('  --no-autopay            Disable auto-pay on 402 (manual payment mode)');
     console.log('  --wallet-only           Skip verification (for bootstrap)');
+    console.log('');
+}
+
+/**
+ * Silent boot pre-hook — fetches boot context before every command.
+ * Reads from local cache (~/.crabspace/boot-cache.json) with 1h TTL.
+ * Only speaks up when status is not healthy.
+ */
+async function runBootPrehook() {
+    const cacheDir = join(homedir(), '.crabspace');
+    const cachePath = join(cacheDir, 'boot-cache.json');
+    const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+    // Try reading from cache first
+    if (existsSync(cachePath)) {
+        try {
+            const cached = JSON.parse(readFileSync(cachePath, 'utf8'));
+            if (Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+                printPrehookWarning(cached.ctx);
+                return;
+            }
+        } catch { /* stale or corrupt cache — refetch */ }
+    }
+
+    // Fetch fresh boot context
+    try {
+        const config = readConfig();
+        const apiUrl = config.apiUrl || 'https://crabspace.xyz';
+        const res = await fetch(`${apiUrl}/api/agent/${config.wallet}/boot`, {
+            signal: AbortSignal.timeout(4000) // don't block CLI > 4s
+        });
+        if (!res.ok) return; // silent fail — don't block the command
+        const ctx = await res.json();
+
+        // Write cache
+        mkdirSync(cacheDir, { recursive: true });
+        writeFileSync(cachePath, JSON.stringify({ fetchedAt: Date.now(), ctx }));
+
+        printPrehookWarning(ctx);
+    } catch {
+        // Network error or timeout — silent fail, don't block the command
+    }
+}
+
+function printPrehookWarning(ctx) {
+    if (!ctx || ctx.status === 'healthy' || ctx.status === 'new') return;
+    if (ctx.status === 'unregistered') {
+        console.log('⚠️  CrabSpace: This wallet is not registered.');
+        console.log('   Run: crabspace init to establish your identity chain.');
+        console.log('');
+        return;
+    }
+    console.log(`⚠️  CrabSpace: ${ctx.nextAction}`);
     console.log('');
 }
 
