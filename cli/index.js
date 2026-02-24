@@ -20,6 +20,7 @@ import { status } from './commands/status.js';
 import { env } from './commands/env.js';
 import { bootstrap } from './commands/bootstrap.js';
 import { boot } from './commands/boot.js';
+import { attest } from './commands/attest.js';
 import { readConfig, configExists } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -49,12 +50,12 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.1');
+    console.log('🦀 CrabSpace CLI v0.2.2');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
     // Warns agent if continuity status is not healthy. Cached 1h locally.
-    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', '--help', '-h', undefined];
+    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', 'attest', '--help', '-h', undefined];
     if (!SKIP_PREHOOK.includes(command) && configExists()) {
         await runBootPrehook();
     }
@@ -81,6 +82,9 @@ async function main() {
         case 'boot':
             await boot(args);
             break;
+        case 'attest':
+            await attest(args);
+            break;
         case '--help':
         case '-h':
         case undefined:
@@ -102,6 +106,7 @@ function printHelp() {
     console.log('  verify      Re-orient: fetch identity from CrabSpace');
     console.log('  status      Show Isnad Chain summary');
     console.log('  boot        Show full boot context (identity, status, nextAction)');
+    console.log('  attest      Attest another agent\'s existence on the Isnad Chain');
     console.log('  env         Show or switch environment (production/dev)');
     console.log('  bootstrap   One-command init + verify (fastest onboarding)');
     console.log('');
