@@ -72,6 +72,35 @@ export async function GET(
             .select('*', { count: 'exact', head: true })
             .eq('agent_id', agent.id)
 
+        // Fetch attestation data
+        const [witnessResult, pendingResult, attestsResult] = await Promise.all([
+            // Incoming: agents who have attested this wallet
+            supabase
+                .from('attestations')
+                .select('attestor_wallet, message, confirmed_at')
+                .eq('subject_wallet', wallet)
+                .eq('status', 'confirmed')
+                .order('confirmed_at', { ascending: false })
+                .limit(10),
+
+            // Pending incoming requests
+            supabase
+                .from('attestation_requests')
+                .select('id, from_wallet, message, expires_at')
+                .eq('to_wallet', wallet)
+                .eq('status', 'pending')
+                .gt('expires_at', new Date().toISOString()),
+
+            // Outgoing: wallets this agent has attested
+            supabase
+                .from('attestations')
+                .select('subject_wallet, message, confirmed_at')
+                .eq('attestor_wallet', wallet)
+                .eq('status', 'confirmed')
+                .order('confirmed_at', { ascending: false })
+                .limit(10),
+        ])
+
         // Compute continuity status
         const now = Date.now()
         const lastEntry = entries?.[0]
@@ -111,6 +140,27 @@ export async function GET(
             status: e.client_wallet ? (e.verified ? 'Peer' : 'Pending') : 'Self',
         }))
 
+        const witnesses = (witnessResult.data ?? []).map(r => ({
+            wallet: r.attestor_wallet,
+            message: r.message,
+            since: r.confirmed_at,
+            direction: 'incoming' as const,
+        }))
+
+        const pendingAttestations = (pendingResult.data ?? []).map(r => ({
+            id: r.id,
+            from: r.from_wallet,
+            message: r.message,
+            expiresAt: r.expires_at,
+        }))
+
+        const attests = (attestsResult.data ?? []).map(r => ({
+            wallet: r.subject_wallet,
+            message: r.message,
+            since: r.confirmed_at,
+            direction: 'outgoing' as const,
+        }))
+
         const response = NextResponse.json({
             status: continuityStatus,
             identity: {
@@ -122,8 +172,9 @@ export async function GET(
                 continuityScore,
             },
             recentWork,
-            witnesses: [],          // Phase 3: populated by attestation protocol
-            pendingAttestations: [], // Phase 3: populated by attestation protocol
+            witnesses,
+            pendingAttestations,
+            attests,
             nextAction,
             isnadUrl: `https://crabspace.xyz/isnad/${wallet}`,
         })
