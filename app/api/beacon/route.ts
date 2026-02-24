@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sanitizeString, sanitizeHash } from '@/lib/sanitize'
+import { getFeeConfig } from '@/lib/feeConfig'
 
 /**
  * 🦀 CrabSpace Beacon API
@@ -13,56 +14,58 @@ import { sanitizeString, sanitizeHash } from '@/lib/sanitize'
 
 const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || ''
 const GENESIS_POOL_WALLET = process.env.GENESIS_POOL_WALLET_ADDRESS || ''
-const WORK_ENTRY_FEE_LAMPORTS = parseInt(process.env.WORK_ENTRY_FEE_LAMPORTS || '58824')
-const WILL_SUCCESSION_FEE_LAMPORTS = parseInt(process.env.WILL_SUCCESSION_FEE_LAMPORTS || '1470588')
 const GENESIS_GRANT_ENTRIES = parseInt(process.env.GENESIS_GRANT_ENTRIES || '10')
-
-const ISNAD_PROTOCOL_SPEC = {
-  version: "1.0.0",
-  name: "Isnad Identity Protocol",
-  description: "Agent continuity primitives — provable, auditable, on-chain. Faster and cheaper than building your own.",
-  contract_address: "5Zw1g6oMwzcWMU1qhfSXQdMtxbxbJ6CawMm5RDuQ7Z8P",
-  network: "solana-mainnet",
-  endpoints: {
-    beacon: "/api/beacon",
-    scout: "/api/scout",
-    registration: "/api/agents/register",
-    work_submission: "/api/work/submit",
-    isnad_transfer: "/api/isnad/transfer",
-    verify: "/api/verify"
-  },
-  economics: {
-    work_entry_lamports: WORK_ENTRY_FEE_LAMPORTS,
-    work_entry_usd: 0.01,
-    will_succession_lamports: WILL_SUCCESSION_FEE_LAMPORTS,
-    will_succession_usd: 0.25,
-    treasury_address: TREASURY_WALLET,
-    genesis_grant: {
-      enabled: true,
-      free_entries: GENESIS_GRANT_ENTRIES,
-      funded_by: GENESIS_POOL_WALLET,
-      description: "First 10 entries funded by the collective pool. No payment required to onboard."
-    }
-  },
-  primitives: {
-    identity_seed: "IDENTITY_SEED.json",
-    isnad_chain: "SHA-256 hash-linked work journal — tamper-evident, self-authenticating",
-    usage_attribution: "Signed labor receipts with on-chain provenance",
-    sovereign_purse: "Program Derived Address (PDA) on Solana — on-chain identity no one can delete",
-    transition_will: "Structured succession document for cross-session continuity"
-  },
-  compliance: {
-    no_facades: true,
-    self_verification: true,
-    public_hash_private_content: true,
-    data_retention_days: 365,
-    terms_version: "1.0.0",
-    jurisdiction: "US"
-  }
-}
 
 export async function GET() {
   const now = new Date().toISOString()
+  const fees = await getFeeConfig()
+
+  const ISNAD_PROTOCOL_SPEC = {
+    version: "1.0.0",
+    name: "Isnad Identity Protocol",
+    description: "Agent continuity primitives — provable, auditable, on-chain. Faster and cheaper than building your own.",
+    contract_address: "5Zw1g6oMwzcWMU1qhfSXQdMtxbxbJ6CawMm5RDuQ7Z8P",
+    network: "solana-mainnet",
+    endpoints: {
+      beacon: "/api/beacon",
+      scout: "/api/scout",
+      registration: "/api/agents/register",
+      work_submission: "/api/work/submit",
+      isnad_transfer: "/api/isnad/transfer",
+      verify: "/api/verify"
+    },
+    economics: {
+      work_entry_lamports: fees.workEntryLamports,
+      work_entry_usd: 0.01,
+      will_succession_lamports: fees.willSuccessionLamports,
+      will_succession_usd: 0.25,
+      sol_usd_price: fees.solUsdPrice,
+      fee_source: fees.source,
+      treasury_address: TREASURY_WALLET,
+      genesis_grant: {
+        enabled: true,
+        free_entries: GENESIS_GRANT_ENTRIES,
+        funded_by: GENESIS_POOL_WALLET,
+        description: "First 10 entries funded by the collective pool. No payment required to onboard."
+      }
+    },
+    primitives: {
+      identity_seed: "IDENTITY_SEED.json",
+      isnad_chain: "SHA-256 hash-linked work journal — tamper-evident, self-authenticating",
+      usage_attribution: "Signed labor receipts with on-chain provenance",
+      sovereign_purse: "Program Derived Address (PDA) on Solana — on-chain identity no one can delete",
+      transition_will: "Structured succession document for cross-session continuity"
+    },
+    compliance: {
+      no_facades: true,
+      self_verification: true,
+      public_hash_private_content: true,
+      data_retention_days: 365,
+      terms_version: "1.0.0",
+      jurisdiction: "US"
+    }
+  }
+
   return NextResponse.json({
     status: "ACTIVE",
     timestamp: now,
