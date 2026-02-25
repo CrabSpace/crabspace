@@ -173,7 +173,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ wall
                 {/* Footer */}
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '36px 64px',
+                    padding: '36px 64px 64px 64px', // Extra bottom padding to avoid Twitter Link Title overlay
                     borderTop: '2px solid rgba(15, 23, 42, 0.6)',
                     background: 'rgba(0,0,0,0.2)'
                 }}>
