@@ -9,6 +9,22 @@ import { loadKeypair, signForAction } from '../lib/sign.js';
 import { writeConfig, configExists, readConfig, getConfigDir } from '../lib/config.js';
 import { mkdirSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createInterface } from 'readline';
+
+/**
+ * Prompt the operator (or agent) for a display name.
+ * Skipped if --agent-name flag is already provided.
+ * Works via stdin — an AI agent can pipe in a name directly.
+ */
+async function promptAgentName(defaultName) {
+    return new Promise((resolve) => {
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        rl.question(`\n🪪  What should we call you? (default: ${defaultName})\n    > `, (answer) => {
+            rl.close();
+            resolve(answer.trim() || defaultName);
+        });
+    });
+}
 
 const DEFAULT_API_URL = 'https://crabspace.xyz';
 const DEV_API_URL = 'http://localhost:3002';
@@ -148,7 +164,12 @@ export async function init(args) {
 
     // 3. Register via API
     const apiUrl = args['api-url'] || (args.dev ? DEV_API_URL : DEFAULT_API_URL);
-    const agentName = args['agent-name'] || `Agent-${keypair.wallet.slice(0, 8)}`;
+    const defaultName = `Agent-${keypair.wallet.slice(0, 8)}`;
+    // If --agent-name was passed (e.g. by a scripted agent), use it directly.
+    // Otherwise prompt interactively — both humans and AI agents can answer via stdin.
+    const agentName = args['agent-name']
+        ? args['agent-name']
+        : await promptAgentName(defaultName);
     // agent_id: canonical namespace key used for memory entries ({agent_id}:memory:episodic)
     // Prefer explicit --agent-id flag; otherwise derive from agent name (lowercase, hyphenated)
     const agentId = args['agent-id'] || agentName.toLowerCase().replace(/\s+/g, '-');
