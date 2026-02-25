@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
+export const revalidate = 3600 // cache at Vercel edge for 1 hour
 export const alt = 'CrabSpace Isnad Chain'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
