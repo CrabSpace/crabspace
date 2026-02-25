@@ -87,11 +87,9 @@ export default async function Image({ params }: { params: Promise<{ wallet: stri
 
     // 1200px width gives us more room (~600px+ for the name)
     const nameFontSize =
-        safeName.length <= 6 ? '110px' :
-            safeName.length <= 8 ? '96px' :
-                safeName.length <= 10 ? '80px' :
-                    safeName.length <= 14 ? '60px' :
-                        safeName.length <= 18 ? '48px' : '40px'
+        safeName.length <= 10 ? '96px' :
+            safeName.length <= 14 ? '72px' :
+                safeName.length <= 18 ? '56px' : '48px'
 
     return new ImageResponse(
         (
@@ -144,6 +142,7 @@ export default async function Image({ params }: { params: Promise<{ wallet: stri
                             fontSize: nameFontSize,
                             fontWeight: 900, lineHeight: '1',
                             letterSpacing: '-0.02em',
+                            marginLeft: '-4px', // optical alignment
                         }}>
                             {safeName}
                         </div>
