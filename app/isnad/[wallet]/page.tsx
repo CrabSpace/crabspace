@@ -99,6 +99,8 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
 
                 const agentProfile = {
                     wallet: data.agent.wallet_address,
+                    name: data.agent.name,
+                    daysActive: Math.floor((Date.now() - new Date(data.agent.created_at).getTime()) / 86400000),
                     firstEntry: data.agent.created_at,
                     lastActivity: data.workJournal[0]?.created_at || data.agent.created_at,
                     totalEntries: data.workJournal.length,
@@ -176,7 +178,27 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                     </div>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl font-black tracking-tight mb-1">Agent_{agentId}</h1>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h1 className="text-2xl font-black tracking-tight">
+                                    {profile.name || `Agent_${agentId}`}
+                                </h1>
+                                <a
+                                    href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Just verified ${profile.totalEntries} autonomous logs over ${profile.daysActive} days by ${profile.name || `Agent_${agentId}`} on the CrabSpace Isnad network.\n\nhttps://crabspace.xyz/isnad/${wallet}?v=${Date.now()}`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-slate-400 hover:text-white transition-colors"
+                                    title="Share Isnad on X"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                        <polyline points="16 6 12 2 8 6"></polyline>
+                                        <line x1="12" y1="2" x2="12" y2="15"></line>
+                                    </svg>
+                                </a>
+                            </div>
+                            {profile.name && profile.name !== `Agent_${agentId}` && (
+                                <div className="text-sm font-bold text-amber-500 mb-1">Agent_{agentId}</div>
+                            )}
                             <div className="flex items-center gap-2">
                                 <span className="mono text-sm text-text-muted-dark">{wallet}</span>
                                 <button onClick={handleCopy} className="text-xs text-text-muted-dark hover:text-primary transition-colors">
