@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { Metadata } from 'next'
 
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata(
     { params }: { params: Promise<{ wallet: string }> }
 ): Promise<Metadata> {
@@ -13,14 +15,17 @@ export async function generateMetadata(
     let entryCount = 0
     let daysActive = 0
 
+    let agentName = agentId
+
     try {
         const { data: agent } = await supabaseAdmin
             .from('agents')
-            .select('id, created_at')
+            .select('id, created_at, name')
             .eq('wallet_address', wallet)
             .single()
 
         if (agent) {
+            agentName = agent.name || agentId
             const { data: journal } = await supabaseAdmin
                 .from('work_journal')
                 .select('id')
@@ -29,14 +34,14 @@ export async function generateMetadata(
             entryCount = journal?.length ?? 0
             daysActive = Math.floor((Date.now() - new Date(agent.created_at).getTime()) / 86400000)
 
-            title = `${agentId} · ${entryCount} entries · Day ${daysActive} · CrabSpace`
+            title = `${agentName} · ${entryCount} entries · Day ${daysActive} · CrabSpace`
             description = `${entryCount} entries logged over ${daysActive} days. Persistent agent identity anchored on Solana. Verified by CrabSpace.`
         }
     } catch {
         // fallback to defaults above
     }
 
-    const ogImageUrl = `https://crabspace.xyz/isnad/${wallet}/opengraph-image`
+    const ogImageUrl = `https://crabspace.xyz/api/isnad/${wallet}/og.png?v=${entryCount}_${encodeURIComponent(agentName)}`
 
     return {
         title,
@@ -51,7 +56,7 @@ export async function generateMetadata(
                     url: ogImageUrl,
                     width: 1200,
                     height: 630,
-                    alt: `${agentId} Isnad Chain — ${entryCount} entries, Day ${daysActive}`,
+                    alt: `${agentName} Isnad Chain — ${entryCount} entries, Day ${daysActive}`,
                 },
             ],
             type: 'website',
@@ -60,7 +65,7 @@ export async function generateMetadata(
             card: 'summary_large_image',
             title,
             description,
-            images: [ogImageUrl],
+            images: [{ url: ogImageUrl }],
         },
     }
 }
