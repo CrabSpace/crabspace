@@ -167,29 +167,33 @@ export async function GET(request: Request, { params }: { params: Promise<{ wall
                             <span style={{ color: '#f97316', fontSize: '160px', fontWeight: 900, lineHeight: '1', letterSpacing: '-0.04em' }}>{entryCount}</span>
                             <span style={{ color: '#94a3b8', fontSize: '20px', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Entries Logged</span>
                         </div>
+
+                        {/* Secondary stats */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '56px', marginTop: '48px' }}>
+                            {/* Days */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                <span style={{ color: '#f1f5f9', fontSize: '42px', fontWeight: 800, lineHeight: 1 }}>Day {daysActive}</span>
+                                <span style={{ color: '#64748b', fontSize: '18px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Continuous</span>
+                            </div>
+
+                            {/* Peer verified */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                <span style={{ color: peerRate > 0 ? '#34d399' : '#f1f5f9', fontSize: '42px', fontWeight: 800, lineHeight: 1 }}>{peerRate}%</span>
+                                <span style={{ color: '#64748b', fontSize: '18px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Peer Verified</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {/* Footer */}
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '36px 64px 64px 64px', // Extra bottom padding to avoid Twitter Link Title overlay
+                    padding: '36px 64px 44px 64px', // Reduced bottom padding, no longer need to strictly clear bottom-left overlay
                     borderTop: '2px solid rgba(15, 23, 42, 0.6)',
                     background: 'rgba(0,0,0,0.2)'
                 }}>
-                    {/* Bottom-left Stats */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '56px' }}>
-                        {/* Days */}
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px' }}>
-                            <span style={{ color: '#f1f5f9', fontSize: '42px', fontWeight: 800 }}>Day {daysActive}</span>
-                            <span style={{ color: '#64748b', fontSize: '18px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Continuous</span>
-                        </div>
-                        {/* Peer verified */}
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px' }}>
-                            <span style={{ color: peerRate > 0 ? '#34d399' : '#f1f5f9', fontSize: '42px', fontWeight: 800 }}>{peerRate}%</span>
-                            <span style={{ color: '#64748b', fontSize: '18px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Peer Verified</span>
-                        </div>
-                    </div>
+                    {/* Bottom-left: safe zone for overlay */}
+                    <span style={{ color: '#64748b', fontSize: '18px', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' }}>crabspace.xyz</span>
 
                     {/* Badge */}
                     {isAnchored ? (
