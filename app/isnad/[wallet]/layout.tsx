@@ -1,8 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { Metadata } from 'next'
 
-export const dynamic = 'force-dynamic'
-
 export async function generateMetadata(
     { params }: { params: Promise<{ wallet: string }> }
 ): Promise<Metadata> {
