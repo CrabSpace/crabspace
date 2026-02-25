@@ -41,7 +41,7 @@ export async function generateMetadata(
         // fallback to defaults above
     }
 
-    const ogImageUrl = `https://crabspace.xyz/api/isnad/${wallet}/og.png?v=${entryCount}_${encodeURIComponent(agentName)}`
+    const ogImageUrl = `https://crabspace.xyz/api/isnad/${wallet}/og-${entryCount}-${Date.now()}.png`
 
     return {
         title,

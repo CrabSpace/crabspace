@@ -24,7 +24,7 @@ function walletToColors(wallet: string) {
     }
 }
 
-export async function GET(request: Request, { params }: { params: Promise<{ wallet: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ wallet: string, image: string }> }) {
     const { wallet } = await params
 
     let entryCount = 0
