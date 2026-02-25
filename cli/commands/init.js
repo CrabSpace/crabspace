@@ -278,7 +278,8 @@ export async function init(args) {
     console.log('      ~/.crabspace/identity/BIOS_SEED.md');
     console.log('      ~/.crabspace/identity/ISNAD_IDENTITY.md');
     console.log('');
-    console.log(`   📄 Isnad Chain: ${apiUrl}/isnad/${config.wallet}`);
+    console.log(`   📄 View:  ${apiUrl}/isnad/${config.wallet}`);
+    console.log(`   🐦 Share: ${apiUrl}/isnad/${config.wallet}?v=1`);
     console.log('');
     console.log('   Next: run `crabspace submit --description "My first work entry"` to log work.');
     console.log('');
