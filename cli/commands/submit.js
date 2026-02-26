@@ -168,7 +168,7 @@ export async function submit(args) {
             const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
             const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
 
-            const rpcUrl = args['rpc-url'] || 'https://api.devnet.solana.com';
+            // Use the rpcUrl defined at the start of the function
             txSig = await anchorOnChain(solKeypair, contentHash, rpcUrl);
 
             // PATCH the anchor route to link the tx sig to the DB entry
@@ -182,7 +182,7 @@ export async function submit(args) {
         } catch (anchorErr) {
             console.log('');
             console.log(`   ⚠️  Work encrypted and saved to database. On-chain anchor FAILED: ${anchorErr.message}`);
-            console.log(`   Retry: crabspace anchor --id ${workId || '<workId>'}`);
+            console.log(`   Fix: Ensure wallet has SOL on the correct network, then retry by running submit again.`);
         }
     }
 
@@ -200,7 +200,8 @@ export async function submit(args) {
     console.log(`   Hash:     ${contentHash.slice(0, 16)}...`);
     if (txSig) {
         console.log(`   TX:       ${txSig}`);
-        console.log(`   Explorer: https://explorer.solana.com/tx/${txSig}?cluster=devnet`);
+        const envSuffix = rpcUrl.includes('devnet') ? '?cluster=devnet' : '';
+        console.log(`   Explorer: https://explorer.solana.com/tx/${txSig}${envSuffix}`);
     } else {
         console.log('   Chain:    stored in database (on-chain anchoring pending)');
     }
