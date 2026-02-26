@@ -24,6 +24,11 @@ const LOG_WORK_DISCRIMINATOR = Buffer.from([
     0xaa, 0x88, 0x30, 0x67, 0xdc, 0x86, 0xee, 0x73
 ]);
 
+// Anchor discriminator for initialize (first 8 bytes of sha256("global:initialize"))
+const INITIALIZE_DISCRIMINATOR = Buffer.from([
+    0xaf, 0xaf, 0x6d, 0x1f, 0x0d, 0x98, 0x9b, 0xed
+]);
+
 /**
  * Derive the IsnadIdentity PDA for a given creator wallet.
  * Seeds: ["isnad", creator_pubkey]
@@ -88,6 +93,59 @@ export async function anchorOnChain(keypair, workHash, rpcUrl = 'https://api.dev
     await connection.confirmTransaction(signature, 'confirmed');
 
     return signature;
+}
+
+/**
+ * Initialize an agent identity on-chain by calling the initialize instruction.
+ *
+ * @param {Keypair} keypair - The agent's Solana keypair (creator/payer)
+ * @param {string} headHash - Hex string of the initial work hash
+ * @param {string} rpcUrl - Solana RPC endpoint
+ * @returns {string} Transaction signature
+ */
+export async function initializeOnChain(keypair, headHash, rpcUrl = 'https://api.mainnet-beta.solana.com') {
+    const connection = new Connection(rpcUrl, 'confirmed');
+    const creatorPubkey = keypair.publicKey;
+
+    const [identityPda] = deriveIdentityPda(creatorPubkey);
+
+    const hashHex = (headHash || '0'.repeat(64)).replace('0x', '');
+    const hashBytes = Buffer.from(hashHex, 'hex');
+    const finalHash = new Uint8Array(32);
+    finalHash.set(new Uint8Array(hashBytes));
+
+    const data = Buffer.concat([INITIALIZE_DISCRIMINATOR, Buffer.from(finalHash)]);
+
+    const ix = new TransactionInstruction({
+        keys: [
+            { pubkey: identityPda, isSigner: false, isWritable: true },  // identity account
+            { pubkey: creatorPubkey, isSigner: true, isWritable: true }, // creator (signer, payer)
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
+        ],
+        programId: PROGRAM_ID,
+        data,
+    });
+
+    const { blockhash } = await connection.getLatestBlockhash('confirmed');
+    const messageV0 = new TransactionMessage({
+        payerKey: creatorPubkey,
+        recentBlockhash: blockhash,
+        instructions: [ix],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(messageV0);
+    tx.sign([keypair]);
+
+    try {
+        const signature = await connection.sendTransaction(tx, { skipPreflight: false });
+        await connection.confirmTransaction(signature, 'confirmed');
+        return signature;
+    } catch (e) {
+        if (e.message && e.message.includes('already in use')) {
+            return 'already-initialized';
+        }
+        throw e;
+    }
 }
 
 /**

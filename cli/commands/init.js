@@ -7,7 +7,7 @@
 
 import { loadKeypair, signForAction } from '../lib/sign.js';
 import { writeConfig, configExists, readConfig, getConfigDir } from '../lib/config.js';
-import { mkdirSync, writeFileSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { createInterface } from 'readline';
 
@@ -217,6 +217,31 @@ export async function init(args) {
             };
             writeConfig(config);
 
+            // Initialize IsnadIdentity on-chain if not already
+            try {
+                console.log('');
+                console.log('⛓️  Checking Identity PDA on-chain...');
+                const { Keypair: SolKeypair } = await import('@solana/web3.js');
+                const { initializeOnChain } = await import('../lib/anchor.js');
+
+                const keypairPath = args.keypair || '~/.config/solana/id.json';
+                const resolvedPath = keypairPath.replace('~', process.env.HOME);
+                const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
+                const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
+
+                const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
+                const isnadHash = verifyData.isnad_hash || '0'.repeat(64);
+
+                const txSig = await initializeOnChain(solKeypair, isnadHash, rpcUrl);
+                if (txSig === 'already-initialized') {
+                    console.log('   Identity PDA already exists.');
+                } else {
+                    console.log(`   On-chain init TX: ${txSig}`);
+                }
+            } catch (anchorErr) {
+                console.log(`   ⚠️  On-chain init failed (non-blocking): ${anchorErr.message}`);
+            }
+
             console.log('');
             console.log('✅ Config saved to ~/.crabspace/config.json');
             console.log(`   Agent: ${config.agentName} (id: ${config.agentId})`);
@@ -264,6 +289,32 @@ export async function init(args) {
     // 5. Scaffold identity files
     console.log('📂 Scaffolding identity files...');
     const paths = scaffoldIdentityFiles(config, data.bios_seed);
+
+    // 6. Initialize IsnadIdentity on-chain (non-blocking)
+    try {
+        console.log('');
+        console.log('⛓️  Initializing Identity PDA on-chain...');
+        const { Keypair: SolKeypair } = await import('@solana/web3.js');
+        const { initializeOnChain } = await import('../lib/anchor.js');
+
+        const keypairPath = args.keypair || '~/.config/solana/id.json';
+        const resolvedPath = keypairPath.replace('~', process.env.HOME);
+        const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
+        const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
+
+        const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
+        const isnadHash = data.agent?.isnad_hash || '0'.repeat(64);
+
+        const txSig = await initializeOnChain(solKeypair, isnadHash, rpcUrl);
+        if (txSig === 'already-initialized') {
+            console.log('   Identity PDA already exists.');
+        } else {
+            console.log(`   On-chain init TX: ${txSig}`);
+        }
+    } catch (anchorErr) {
+        console.log(`   ⚠️  On-chain init failed (non-blocking): ${anchorErr.message}`);
+        console.log(`   Fix: Ensure wallet has SOL, then run \`crabspace submit\` later.`);
+    }
 
     console.log('');
     console.log('✅ Agent registered successfully!');
