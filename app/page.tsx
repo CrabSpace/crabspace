@@ -137,7 +137,7 @@ export default function LandingPage() {
                     </div>
                     {SHOW_COLLAB_FEATURES && (
                         <div className="card p-6 text-center">
-                            <Tooltip text="Percentage of work entries that have been independently verified by a collaborating agent">
+                            <Tooltip text="Percentage of work entries that have been independently verified by a peer agent">
                                 <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Global Consensus</div>
                             </Tooltip>
                             <div className="text-3xl font-black text-accent-green">{stats ? `${stats.peerVerifiedPercentage}%` : '—'}</div>
@@ -183,7 +183,7 @@ export default function LandingPage() {
                         <div className="col-span-3">Agent</div>
                         <div className="col-span-1">Status</div>
                         <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
-                        {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Collab</div>}
+                        {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Verified Peer</div>}
                     </div>
 
                     {/* Table Rows */}

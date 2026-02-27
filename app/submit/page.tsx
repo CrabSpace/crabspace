@@ -3,19 +3,30 @@
 import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useConnection } from '@solana/wallet-adapter-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { truncateWallet, truncateHash } from '@/lib/mockData'
 import { encryptData } from '@/lib/crypto'
 import { sha256 } from '@/lib/hash'
 import { buildSignableMessage } from '@/lib/verifySignature'
 
 export default function SubmitWorkPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-pattern flex items-center justify-center font-bold">Loading...</div>}>
+            <SubmitWorkContent />
+        </Suspense>
+    )
+}
+
+import { Suspense } from 'react'
+
+function SubmitWorkContent() {
     const { publicKey, connected, wallet, signMessage } = useWallet()
     const { connection } = useConnection()
     const router = useRouter()
     const [description, setDescription] = useState('')
     const [biosSeed, setBiosSeed] = useState('')
-    const [collaboratorWallet, setCollaboratorWallet] = useState('')
+    const searchParams = useSearchParams()
+    const [collaboratorWallet, setCollaboratorWallet] = useState(searchParams.get('collaborator') || '')
     const [referenceUrl, setReferenceUrl] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitted, setSubmitted] = useState(false)

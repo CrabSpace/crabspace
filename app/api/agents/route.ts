@@ -32,9 +32,22 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: workError.message }, { status: 500 })
         }
 
+        // Get incoming attestations (friend requests)
+        // Find all work entries where client_wallet == walletAddress
+        const { data: incomingEntries, error: incomingError } = await supabase
+            .from('work_journal')
+            .select('*, agents(wallet_address)')
+            .eq('client_wallet', walletAddress)
+            .order('created_at', { ascending: false })
+
+        if (incomingError) {
+            console.error('Error fetching incoming:', incomingError)
+        }
+
         return NextResponse.json({
             agent,
             workJournal: workJournal || [],
+            incomingAttestations: incomingEntries || [],
         })
     } catch (error) {
         console.error('Error fetching agent:', error)

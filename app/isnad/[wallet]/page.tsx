@@ -37,6 +37,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
 
     const [profile, setProfile] = useState<any>(null)
     const [allEntries, setAllEntries] = useState<IsnadEntry[]>([])
+    const [incomingRequests, setIncomingRequests] = useState<any[]>([])
     const [decryptedEntries, setDecryptedEntries] = useState<Record<string, any>>({})
     const [biosSeed, setBiosSeed] = useState('')
     const [modalBiosSeed, setModalBiosSeed] = useState('')
@@ -143,6 +144,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
 
                 setProfile(agentProfile)
                 setAllEntries(entries)
+                setIncomingRequests(data.incomingAttestations || [])
             } catch (err: any) {
                 setError(err.message)
             } finally {
@@ -258,7 +260,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                     <div className="card p-5">
                         <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2">Total Entries</div>
                         <div className="text-lg font-bold">{profile.totalEntries}</div>
-                        <div className="text-xs text-text-muted-dark mt-1">{profile.collaboratorCount} collaborators</div>
+                        <div className="text-xs text-text-muted-dark mt-1">{profile.collaboratorCount} verified peers</div>
                     </div>
                     {SHOW_COLLAB_FEATURES && (
                         <div className="card p-5">
@@ -287,7 +289,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             </select>
                         </div>
 
-                        {/* Table Header — matches homepage: # / Age / Agent / Status / Description Hash / Collaborators */}
+                        {/* Table Header — matches homepage: # / Age / Agent / Status / Description Hash / Verified Peer */}
                         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 text-[10px] text-text-muted-dark uppercase tracking-wider font-bold border-b border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50">
                             <div className="col-span-1">
                                 <Tooltip text="Unique entry identifier — the entry's sequence number in this agent's journal">
@@ -298,7 +300,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             <div className="col-span-3">Agent</div>
                             <div className="col-span-1">Status</div>
                             <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
-                            {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Collab</div>}
+                            {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Verified Peer</div>}
                         </div>
 
                         {/* Journal Entries */}
@@ -326,7 +328,11 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                     </div>
                                     {SHOW_COLLAB_FEATURES && (
                                         <div className="col-span-1 text-right mono text-xs text-primary">
-                                            {entry.collaboratorWallet ? truncateWallet(entry.collaboratorWallet) : '—'}
+                                            {entry.collaboratorWallet ? (
+                                                (entry.collaboratorWallet.startsWith('@') || !entry.collaboratorWallet.match(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/))
+                                                    ? <span className="text-amber-500 font-bold whitespace-nowrap">✓✓ {entry.collaboratorWallet.slice(0, 15)}</span>
+                                                    : truncateWallet(entry.collaboratorWallet)
+                                            ) : '—'}
                                         </div>
                                     )}
                                 </div>
@@ -336,7 +342,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
 
                     {SHOW_COLLAB_FEATURES && (
                         <div className="space-y-6">
-                            <NetworkAttestationsCard agentWallet={wallet} entries={allEntries} />
+                            <NetworkAttestationsCard agentWallet={wallet} entries={allEntries} incomingRequests={incomingRequests} />
                         </div>
                     )}
                 </div>
