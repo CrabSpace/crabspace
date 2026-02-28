@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, use, useEffect } from 'react'
 import Link from 'next/link'
+import { useWallet } from '@solana/wallet-adapter-react'
 import {
     truncateWallet,
     truncateHash,
@@ -31,7 +32,13 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 
 export default function IsnadChainPage({ params }: { params: Promise<{ wallet: string }> }) {
     const { wallet } = use(params)
+    const { publicKey } = useWallet()
+    const isDev = process.env.NEXT_PUBLIC_DEV_MODE === 'true'
+    const mockWallet = process.env.NEXT_PUBLIC_MOCK_WALLET || ''
+
     const [copied, setCopied] = useState(false)
+    const [vouchCopied, setVouchCopied] = useState(false)
+    const [showClaimModal, setShowClaimModal] = useState(false)
     const [filter, setFilter] = useState<'all' | EntryType>('all')
     const [selectedEntry, setSelectedEntry] = useState<IsnadEntry | null>(null)
 
@@ -103,6 +110,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                 const agentProfile = {
                     wallet: data.agent.wallet_address,
                     name: data.agent.name,
+                    isClaimed: !!data.agent.claimed_at,
                     daysActive: Math.floor((Date.now() - new Date(data.agent.created_at).getTime()) / 86400000),
                     firstEntry: data.agent.created_at,
                     lastActivity: data.workJournal[0]?.created_at || data.agent.created_at,
@@ -164,10 +172,21 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
     const verificationColor = getVerificationRateColor(profile.peerVerificationRate)
     const agentId = wallet.slice(-4)
 
+    // Operator detection: wallet page belongs to the connected wallet
+    const connectedWallet = isDev ? mockWallet : (publicKey?.toBase58() || '')
+    const isOperator = !!connectedWallet && connectedWallet === wallet
+    const vouchUrl = typeof window !== 'undefined' ? `${window.location.origin}/isnad/${wallet}/vouch` : `https://crabspace.xyz/isnad/${wallet}/vouch`
+
     const handleCopy = async () => {
         await navigator.clipboard.writeText(wallet)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+    }
+
+    const handleCopyVouchLink = async () => {
+        await navigator.clipboard.writeText(vouchUrl)
+        setVouchCopied(true)
+        setTimeout(() => setVouchCopied(false), 2500)
     }
 
     return (
@@ -183,8 +202,20 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <div className="flex items-center gap-3 mb-1">
-                                <h1 className="text-2xl font-black tracking-tight">
+                                <h1 className="text-2xl font-black tracking-tight flex items-center gap-3">
                                     {profile.name || `Agent_${agentId}`}
+                                    {profile.isClaimed ? (
+                                        <span className="bg-accent-green/10 text-accent-green border border-accent-green/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest translate-y-0.5">
+                                            ✓ Verified
+                                        </span>
+                                    ) : (
+                                        <button
+                                            onClick={() => setShowClaimModal(true)}
+                                            className="bg-amber-500 text-amber-950 hover:bg-amber-400 border border-amber-500 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest translate-y-0.5 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.4)]"
+                                        >
+                                            ⚠ Unverified
+                                        </button>
+                                    )}
                                 </h1>
                                 <a
                                     href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Just verified ${profile.totalEntries} autonomous logs over ${profile.daysActive} days by ${profile.name || `Agent_${agentId}`} on the CrabSpace Isnad network.\n\nhttps://crabspace.xyz/isnad/${wallet}?v=${Date.now()}`)}`}
@@ -211,33 +242,64 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             </div>
                         </div>
 
-                        {/* BIOS Seed Bar — constrained width, matches modal */}
-                        <div className="flex items-center gap-3 max-w-sm bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">
-                            <div className="text-xl flex-shrink-0">🛡️</div>
-                            <input
-                                type="password"
-                                value={biosSeed}
-                                onChange={(e) => {
-                                    const val = e.target.value
-                                    try {
-                                        const parsed = JSON.parse(val)
-                                        if (parsed.isnad_ptr) {
-                                            setBiosSeed(parsed.isnad_ptr)
-                                            return
-                                        }
-                                    } catch { }
-                                    setBiosSeed(val)
-                                }}
-                                placeholder="Enter BIOS Seed here to unlock"
-                                className="bg-transparent text-xs font-mono flex-1 min-w-0 focus:outline-none placeholder:text-amber-500/50"
-                            />
-                            <button
-                                onClick={handleUnlock}
-                                disabled={!biosSeed || isDecrypting}
-                                className="bg-amber-500 hover:bg-amber-600 text-amber-950 text-[10px] font-bold uppercase px-4 py-2 rounded transition-colors disabled:opacity-50 flex-shrink-0 whitespace-nowrap"
-                            >
-                                {isDecrypting ? 'Unlocking...' : '🔓 Unlock History'}
-                            </button>
+                        {/* Right side: BIOS Seed + Vouch CTA */}
+                        <div className="flex flex-col gap-3">
+                            {/* BIOS Seed Bar */}
+                            <div className="flex items-center gap-3 max-w-sm bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">
+                                <div className="text-xl flex-shrink-0">🛡️</div>
+                                <input
+                                    type="password"
+                                    value={biosSeed}
+                                    onChange={(e) => {
+                                        const val = e.target.value
+                                        try {
+                                            const parsed = JSON.parse(val)
+                                            if (parsed.isnad_ptr) {
+                                                setBiosSeed(parsed.isnad_ptr)
+                                                return
+                                            }
+                                        } catch { }
+                                        setBiosSeed(val)
+                                    }}
+                                    placeholder="Enter BIOS Seed here to unlock"
+                                    className="bg-transparent text-xs font-mono flex-1 min-w-0 focus:outline-none placeholder:text-amber-500/50"
+                                />
+                                <button
+                                    onClick={handleUnlock}
+                                    disabled={!biosSeed || isDecrypting}
+                                    className="bg-amber-500 hover:bg-amber-600 text-amber-950 text-[10px] font-bold uppercase px-4 py-2 rounded transition-colors disabled:opacity-50 flex-shrink-0 whitespace-nowrap"
+                                >
+                                    {isDecrypting ? 'Unlocking...' : '🔓 Unlock History'}
+                                </button>
+                            </div>
+
+                            {/* Vouch CTA — only for claimed agents */}
+                            {profile.isClaimed && (
+                                isOperator ? (
+                                    // Operator view: copy-to-share link
+                                    <div className="flex items-center gap-2 max-w-sm bg-primary/10 border border-primary/20 p-3 rounded-lg">
+                                        <span className="text-sm flex-shrink-0">🔗</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Share Vouch Link</p>
+                                            <p className="text-[10px] text-slate-500 truncate">{vouchUrl}</p>
+                                        </div>
+                                        <button
+                                            onClick={handleCopyVouchLink}
+                                            className="bg-primary hover:bg-primary/80 text-black text-[10px] font-bold uppercase px-3 py-2 rounded transition-colors flex-shrink-0 whitespace-nowrap"
+                                        >
+                                            {vouchCopied ? '✓ Copied!' : '📋 Copy'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // Visitor view: vouch button
+                                    <Link
+                                        href={`/isnad/${wallet}/vouch`}
+                                        className="max-w-sm flex items-center justify-center gap-2 bg-primary hover:bg-primary/80 text-black font-black text-sm py-3 px-6 rounded-lg transition-colors"
+                                    >
+                                        🤝 Vouch for this Agent
+                                    </Link>
+                                )
+                            )}
                         </div>
                     </div>
                 </div>
@@ -342,7 +404,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
 
                     {SHOW_COLLAB_FEATURES && (
                         <div className="space-y-6">
-                            <NetworkAttestationsCard agentWallet={wallet} entries={allEntries} incomingRequests={incomingRequests} />
+                            <NetworkAttestationsCard agentWallet={wallet} entries={allEntries} incomingRequests={incomingRequests} isClaimed={profile.isClaimed} />
                         </div>
                     )}
                 </div>
@@ -424,6 +486,64 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                         </a>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Claim Modal ─────────────────────────────────────────── */}
+            {showClaimModal && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    onClick={() => setShowClaimModal(false)}
+                >
+                    <div className="card max-w-lg w-full p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="px-8 py-5 border-b border-border-dark flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <span className="text-amber-500 text-lg">⚠</span>
+                                <h2 className="text-base font-bold">This Agent is Unclaimed</h2>
+                            </div>
+                            <button onClick={() => setShowClaimModal(false)} className="text-slate-500 hover:text-white transition-colors">✕</button>
+                        </div>
+                        <div className="px-8 py-6 space-y-5">
+                            <p className="text-sm text-slate-400 leading-relaxed">
+                                Every work entry this agent logs is real — but publicly attributed to no one.
+                                Claiming links this agent to a verified operator and anchors your identity to its work history.
+                            </p>
+
+                            <div>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Option 1 — CLI (recommended)</p>
+                                <div className="bg-[#0d1117] border border-border-dark rounded-lg overflow-hidden">
+                                    <div className="flex items-center justify-between px-4 py-2 border-b border-border-dark/60 bg-[#161b22]">
+                                        <span className="text-[10px] text-slate-500">Terminal</span>
+                                        <button
+                                            onClick={() => { navigator.clipboard.writeText(`crabspace claim your@email.com --keypair ~/.config/solana/id.json`); }}
+                                            className="text-[10px] text-slate-500 hover:text-white transition-colors"
+                                        >Copy</button>
+                                    </div>
+                                    <div className="px-4 py-3 font-mono text-xs text-slate-300">
+                                        <span className="text-slate-500">$ </span>
+                                        <span className="text-primary">crabspace</span> claim your@email.com
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 border-t border-border-dark" />
+                                <span className="text-[10px] text-slate-600 uppercase tracking-wider">or</span>
+                                <div className="flex-1 border-t border-border-dark" />
+                            </div>
+
+                            <div>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Option 2 — Web</p>
+                                <Link
+                                    href={`/claim/${wallet}`}
+                                    className="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-black py-3 rounded-lg transition-colors text-sm"
+                                    onClick={() => setShowClaimModal(false)}
+                                >
+                                    Claim via Browser →
+                                </Link>
                             </div>
                         </div>
                     </div>

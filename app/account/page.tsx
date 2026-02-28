@@ -43,6 +43,10 @@ export default function AccountPage() {
     const [registerName, setRegisterName] = useState('')
     const [registering, setRegistering] = useState(false)
     const [registerError, setRegisterError] = useState<string | null>(null)
+    const [myAgents, setMyAgents] = useState<any[]>([])
+    const [newEmail, setNewEmail] = useState('')
+    const [emailSaving, setEmailSaving] = useState(false)
+    const [emailMsg, setEmailMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -70,12 +74,49 @@ export default function AccountPage() {
         }
 
         fetchIdentity()
+
+        // Fetch all agents owned by this wallet
+        const fetchMyAgents = async () => {
+            try {
+                const res = await fetch(`/api/agents?ownerWallet=${activeWallet}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setMyAgents(data.agents || [])
+                }
+            } catch { }
+        }
+        fetchMyAgents()
     }, [isConnected, activeWallet])
 
     const handleCopy = (text: string, label: string) => {
         navigator.clipboard.writeText(text)
         setCopied(label)
         setTimeout(() => setCopied(null), 2500)
+    }
+
+    const handleChangeEmail = async () => {
+        if (!newEmail || emailSaving) return
+        setEmailSaving(true)
+        setEmailMsg(null)
+        try {
+            // Re-use the claim email endpoint with action=update
+            const res = await fetch('/api/claim/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet: activeWallet, email: newEmail, action: 'update' })
+            })
+            const data = await res.json()
+            if (res.ok) {
+                setEmailMsg({ type: 'ok', text: 'Verification email sent — check your inbox to confirm the change.' })
+                setNewEmail('')
+            } else {
+                setEmailMsg({ type: 'err', text: data.error || 'Failed to update email.' })
+            }
+        } catch {
+            setEmailMsg({ type: 'err', text: 'Network error. Please try again.' })
+        } finally {
+            setEmailSaving(false)
+        }
     }
 
     const handleDownloadSeed = () => {
@@ -482,6 +523,88 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                 </p>
                             </div>
                         </div>
+
+
+                        {/* ─── MY AGENTS ─── */}
+                        {myAgents.length > 0 && (
+                            <div className="card p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="text-2xl">🤖</span>
+                                    <div>
+                                        <h3 className="font-bold text-white">My Agents</h3>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{myAgents.length} agent{myAgents.length !== 1 ? 's' : ''} registered</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    {myAgents.map((a: any) => (
+                                        <div key={a.wallet_address} className="flex items-center justify-between p-3 bg-slate-800/50 border border-border-dark rounded-lg hover:border-slate-600 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-white truncate">{a.name || `Agent_${a.wallet_address.slice(-4)}`}</p>
+                                                    <p className="text-[10px] font-mono text-slate-500">{a.wallet_address.slice(0, 8)}...{a.wallet_address.slice(-4)}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                                {a.claimed_at ? (
+                                                    <span className="text-[10px] font-bold text-accent-green bg-accent-green/10 border border-accent-green/20 px-2 py-0.5 rounded uppercase tracking-wider">✓ Verified</span>
+                                                ) : (
+                                                    <Link
+                                                        href={`/claim/${a.wallet_address}`}
+                                                        className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded uppercase tracking-wider hover:bg-amber-500/20 transition-colors"
+                                                    >
+                                                        ⚠ Claim
+                                                    </Link>
+                                                )}
+                                                <Link
+                                                    href={`/isnad/${a.wallet_address}`}
+                                                    className="text-[10px] font-bold text-slate-400 hover:text-white border border-border-dark px-2 py-0.5 rounded transition-colors"
+                                                >
+                                                    Isnad →
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+
+                        {/* ─── CHANGE EMAIL ─── */}
+                        {agent?.claimed_at && (
+                            <div className="card p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="text-2xl">✉️</span>
+                                    <div>
+                                        <h3 className="font-bold text-white">Change Email</h3>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Update claim contact email</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                                    Enter a new email address. We&apos;ll send a verification link to confirm the change before updating your record.
+                                </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="email"
+                                        value={newEmail}
+                                        onChange={e => setNewEmail(e.target.value)}
+                                        placeholder="new@email.com"
+                                        className="flex-1 bg-slate-800/50 border border-border-dark rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary transition-colors"
+                                    />
+                                    <button
+                                        onClick={handleChangeEmail}
+                                        disabled={!newEmail || emailSaving}
+                                        className="bg-primary hover:bg-primary/80 text-black text-xs font-black uppercase px-4 py-2 rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap"
+                                    >
+                                        {emailSaving ? 'Sending...' : 'Send Link'}
+                                    </button>
+                                </div>
+                                {emailMsg && (
+                                    <p className={`text-xs mt-2 ${emailMsg.type === 'ok' ? 'text-accent-green' : 'text-red-400'}`}>
+                                        {emailMsg.text}
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
 
                         {/* ─── MANUAL SETUP GUIDE ─── */}

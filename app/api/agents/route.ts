@@ -4,6 +4,21 @@ import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const walletAddress = searchParams.get('wallet')
+    const ownerWallet = searchParams.get('ownerWallet')
+
+    // ── List all agents for an owner wallet (My Agents on account page) ──
+    if (ownerWallet) {
+        const { data: agents, error } = await supabase
+            .from('agents')
+            .select('wallet_address, name, claimed_at, created_at, total_work_entries')
+            .eq('owner_wallet', ownerWallet)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+        return NextResponse.json({ agents: agents || [] })
+    }
 
     if (!walletAddress) {
         return NextResponse.json({ error: 'Wallet address required' }, { status: 400 })
