@@ -10,4 +10,4 @@
  * Set to true when the network has enough agents (~50+ active) to make these
  * metrics meaningful rather than misleading.
  */
-export const SHOW_COLLAB_FEATURES = true
+export const SHOW_COLLAB_FEATURES = false

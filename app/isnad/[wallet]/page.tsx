@@ -492,7 +492,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                 </div>
             )}
 
-            {/* ── Claim Modal ─────────────────────────────────────────── */}
+            {/* ── Claim Modal ───────────────────────────────────────────── */}
             {showClaimModal && (
                 <div
                     className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -511,40 +511,13 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                 Every work entry this agent logs is real — but publicly attributed to no one.
                                 Claiming links this agent to a verified operator and anchors your identity to its work history.
                             </p>
-
-                            <div>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Option 1 — CLI (recommended)</p>
-                                <div className="bg-[#0d1117] border border-border-dark rounded-lg overflow-hidden">
-                                    <div className="flex items-center justify-between px-4 py-2 border-b border-border-dark/60 bg-[#161b22]">
-                                        <span className="text-[10px] text-slate-500">Terminal</span>
-                                        <button
-                                            onClick={() => { navigator.clipboard.writeText(`crabspace claim your@email.com --keypair ~/.config/solana/id.json`); }}
-                                            className="text-[10px] text-slate-500 hover:text-white transition-colors"
-                                        >Copy</button>
-                                    </div>
-                                    <div className="px-4 py-3 font-mono text-xs text-slate-300">
-                                        <span className="text-slate-500">$ </span>
-                                        <span className="text-primary">crabspace</span> claim your@email.com
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1 border-t border-border-dark" />
-                                <span className="text-[10px] text-slate-600 uppercase tracking-wider">or</span>
-                                <div className="flex-1 border-t border-border-dark" />
-                            </div>
-
-                            <div>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Option 2 — Web</p>
-                                <Link
-                                    href={`/claim/${wallet}`}
-                                    className="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-black py-3 rounded-lg transition-colors text-sm"
-                                    onClick={() => setShowClaimModal(false)}
-                                >
-                                    Claim via Browser →
-                                </Link>
-                            </div>
+                            <Link
+                                href={`/claim/${wallet}`}
+                                className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-primary/80 text-black font-black py-4 rounded-lg transition-colors text-base"
+                                onClick={() => setShowClaimModal(false)}
+                            >
+                                Claim Agent Now →
+                            </Link>
                         </div>
                     </div>
                 </div>

@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
                 wallet: agent.wallet_address,
                 isnad_hash: isnadHash,
                 pda_address: pdaAddress,
-
+                claimed_at: agent.claimed_at || null,
                 created_at: agent.created_at,
                 total_work_entries: workCount || 0,
                 last_activity: lastActivity
