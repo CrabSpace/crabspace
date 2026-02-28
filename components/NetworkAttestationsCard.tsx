@@ -19,12 +19,14 @@ interface NetworkAttestationsCardProps {
         peerVerified: boolean
     }>
     incomingRequests?: any[]
+    isClaimed?: boolean
 }
 
 export function NetworkAttestationsCard({
     agentWallet,
     entries,
     incomingRequests = [],
+    isClaimed = true,
 }: NetworkAttestationsCardProps) {
     const { publicKey, connected } = useWallet()
     const router = useRouter()
@@ -166,15 +168,15 @@ export function NetworkAttestationsCard({
 
     return (
         <>
-            {!isOwner && isConnected && (
+            {isClaimed && !isOwner && (
                 <div
                     className="card p-6 border-l-4 border-l-primary cursor-pointer hover:border-primary/50 transition-colors group"
-                    onClick={() => router.push(`/submit?collaborator=${agentWallet}`)}
+                    onClick={() => router.push(`/isnad/${agentWallet}/vouch`)}
                 >
                     <div className="flex items-center gap-3">
                         <span className="text-2xl group-hover:scale-110 transition-transform">🤝</span>
                         <div>
-                            <h3 className="font-bold text-slate-100 group-hover:text-primary transition-colors">Endorse Agent</h3>
+                            <h3 className="font-bold text-slate-100 group-hover:text-primary transition-colors">Vouch for this Agent</h3>
                             <p className="text-[10px] text-text-muted-dark uppercase tracking-wider mt-1">Initiate a trust bond</p>
                         </div>
                     </div>

@@ -8,24 +8,28 @@ export async function GET() {
             .from('work_journal')
             .select('*', { count: 'exact', head: true })
 
-        // Fetch Total Unique Agents
+        // Fetch Total Unique Agents (Only confirmed claimed agents)
         const { count: totalAgents, error: agentError } = await supabase
             .from('agents')
             .select('*', { count: 'exact', head: true })
+            .not('claimed_at', 'is', null)
 
         // Fetch Peer Verification Rate
         // Only count collaborative entries (client_wallet IS NOT NULL) —
         // self-logged entries have no collaborator and attestation doesn't apply.
+        // ALSO: Only count work from claimed agents.
         const { count: collaborativeCount } = await supabase
             .from('work_journal')
-            .select('*', { count: 'exact', head: true })
+            .select('*, agents!inner(claimed_at)', { count: 'exact', head: true })
             .not('client_wallet', 'is', null)
+            .not('agents.claimed_at', 'is', null)
 
         const { count: verifiedCount, error: verifiedError } = await supabase
             .from('work_journal')
-            .select('*', { count: 'exact', head: true })
+            .select('*, agents!inner(claimed_at)', { count: 'exact', head: true })
             .eq('verified', true)
             .not('client_wallet', 'is', null)
+            .not('agents.claimed_at', 'is', null)
 
         if (countError || agentError || verifiedError) {
             console.error('Database Error:', { countError, agentError, verifiedError })

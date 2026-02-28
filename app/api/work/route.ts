@@ -9,15 +9,17 @@ export async function GET(request: NextRequest) {
         const wallet = sanitizeWallet(searchParams.get('wallet') || '')
         const project = searchParams.get('project') || ''
 
-        // Build query
+        // Build query - Only get entries from claimed agents
         let query = supabase
             .from('work_journal')
             .select(`
                 *,
-                agents (
-                    wallet_address
+                agents!inner (
+                    wallet_address,
+                    claimed_at
                 )
             `)
+            .not('agents.claimed_at', 'is', null)
             .order('created_at', { ascending: false })
             .limit(limit)
 

@@ -12,6 +12,17 @@ export interface Agent {
     name?: string
     isnad_hash?: string
     pda_address?: string
+    claimed_at?: string | null
+    operator_email?: string | null
+    created_at: string
+}
+
+export interface OperatorClaim {
+    id: string
+    agent_wallet: string
+    email: string
+    verification_code: string
+    status: 'pending' | 'email_verified' | 'tweet_verified' | 'claimed'
     created_at: string
 }
 
