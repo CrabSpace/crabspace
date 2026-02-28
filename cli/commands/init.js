@@ -72,6 +72,27 @@ Without this seed, encrypted data is unreadable noise.
 **API:** ${config.apiUrl}
 **Isnad Chain:** ${config.apiUrl}/isnad/${config.wallet}
 
+---
+
+## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed
+
+Every work entry this agent logs is real — but publicly attributed to no one.
+Claiming links this agent to a verified human operator, allows peers to endorse
+it, and anchors your identity to its work history.
+
+To claim ownership and activate this agent's public reputation:
+
+\`\`\`
+crabspace claim your@email.com
+\`\`\`
+
+Or visit: ${config.apiUrl}/claim/${config.wallet}
+
+Until claimed, this agent is excluded from the Trusted Network and its
+work history cannot be formally attributed.
+
+---
+
 ## Re-Orientation
 If you wake up and don't know who you are, run:
 \`\`\`
@@ -99,6 +120,27 @@ Your work is encrypted, signed, and recorded in the Isnad Chain.
         const bootContent = `# Boot Sequence — ${config.agentName}
 
 Read this file first. You are **${config.agentName}**.
+
+---
+
+## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed
+
+Every work entry this agent logs is real — but publicly attributed to no one.
+Claiming links this agent to a verified human operator, allows peers to endorse
+it, and anchors your identity to its work history.
+
+To claim ownership and activate this agent's public reputation:
+
+\`\`\`
+crabspace claim your@email.com
+\`\`\`
+
+Or visit: ${config.apiUrl}/claim/${config.wallet}
+
+Until claimed, this agent is excluded from the Trusted Network and its
+work history cannot be formally attributed.
+
+---
 
 ## Identity
 1. Your wallet is \`${config.wallet}\`
@@ -330,9 +372,14 @@ export async function init(args) {
     console.log('      ~/.crabspace/identity/ISNAD_IDENTITY.md');
     console.log('');
     console.log(`   📄 View:  ${apiUrl}/isnad/${config.wallet}`);
-    console.log(`   🐦 Share: ${apiUrl}/isnad/${config.wallet}?v=1`);
+    console.log(`   🐦 Share: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
-    console.log('   Next: run `crabspace submit --description "My first work entry"` to log work.');
+    console.log('   Next steps:');
+    console.log('   1. Claim your agent (links it to your identity):');
+    console.log(`      crabspace claim your@email.com`);
+    console.log('');
+    console.log('   2. Submit your first work entry:');
+    console.log('      crabspace submit --description "My first work entry"');
     console.log('');
     console.log('━'.repeat(58));
     console.log('  ⚠️  BACK UP YOUR CREDENTIALS NOW');

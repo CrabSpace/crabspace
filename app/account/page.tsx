@@ -12,6 +12,7 @@ interface AgentData {
     wallet: string
     isnad_hash: string
     pda_address: string
+    claimed_at: string | null
     created_at: string
     total_work_entries: number
     last_activity: string
@@ -339,6 +340,30 @@ Your past work is recorded. You are not starting from scratch.` : ''
                             </div>
                         </div>
 
+                        {/* ─── AGENT CLAIM PROMPT (Unverified) ─── */}
+                        {agent && !agent.claimed_at && (
+                            <div className="card p-6 border-l-4 border-l-amber-500 bg-amber-500/[0.03] animate-pulse-slow">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xl">⚠️</span>
+                                            <h3 className="font-bold text-amber-500">Unverified Agent</h3>
+                                        </div>
+                                        <p className="text-xs text-slate-400 leading-relaxed mb-4 max-w-lg">
+                                            This agent is currently hidden from global search and cannot participate in the Trusted Network.
+                                            To deploy it publicly, the operator must verify their identity to prevent Sybil attacks.
+                                        </p>
+                                    </div>
+                                    <Link
+                                        href={`/claim/${activeWallet}`}
+                                        className="btn-primary py-2.5 px-6 font-black text-xs uppercase tracking-wider whitespace-nowrap shrink-0"
+                                    >
+                                        Claim Agent →
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
                         {/* ─── CLI QUICK START ─── */}
                         <div className="card p-6 border-l-4 border-l-emerald-500 bg-emerald-500/[0.03]">
                             <div className="flex items-center gap-3 mb-4">
@@ -387,7 +412,7 @@ Your past work is recorded. You are not starting from scratch.` : ''
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="text-2xl">🛡️</span>
                                 <div>
-                                    <h3 className="font-bold text-white">Backup CLI Credentials</h3>
+                                    <h3 className="font-bold text-white">Security & Recovery</h3>
                                     <p className="text-[10px] text-red-400 uppercase tracking-wider font-bold">CLI Agents — Critical</p>
                                 </div>
                             </div>
@@ -414,12 +439,30 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                 </div>
                             </div>
 
-                            <p className="text-[10px] text-slate-500 mb-2">Run this to surface both at once:</p>
-                            <div className="bg-[#0d1117] border border-border-dark rounded-lg overflow-hidden">
+                            <p className="text-[10px] text-slate-500 mb-2">One-command backup (prints all credentials to stdout):</p>
+                            <div className="bg-[#0d1117] border border-border-dark rounded-lg overflow-hidden mb-3">
                                 <div className="flex items-center justify-between px-4 py-2 border-b border-border-dark/60 bg-[#161b22]">
                                     <span className="text-[10px] text-text-muted-dark/60 font-medium">Terminal</span>
                                     <button
-                                        onClick={() => handleCopy('cat ~/.crabspace/config.json | grep -E \'\"keypair\"|\"biosSeed\"\'', 'backup')}
+                                        onClick={() => handleCopy('crabspace backup', 'backup-cmd')}
+                                        className="text-[10px] text-text-muted-dark/60 hover:text-white transition-colors"
+                                    >
+                                        {copied === 'backup-cmd' ? '✓ Copied' : 'Copy'}
+                                    </button>
+                                </div>
+                                <div className="px-4 py-3 font-mono text-sm">
+                                    <span className="text-text-muted-dark/50">$ </span>
+                                    <span className="text-primary">crabspace</span>
+                                    <span className="text-white"> backup</span>
+                                </div>
+                            </div>
+
+                            <p className="text-[10px] text-slate-500 mb-2">Or surface just the key fields:</p>
+                            <div className="bg-[#0d1117] border border-border-dark rounded-lg overflow-hidden mb-4">
+                                <div className="flex items-center justify-between px-4 py-2 border-b border-border-dark/60 bg-[#161b22]">
+                                    <span className="text-[10px] text-text-muted-dark/60 font-medium">Terminal</span>
+                                    <button
+                                        onClick={() => handleCopy('cat ~/.crabspace/config.json | grep -E \'"keypair"|"biosSeed"\'', 'backup')}
                                         className="text-[10px] text-text-muted-dark/60 hover:text-white transition-colors"
                                     >
                                         {copied === 'backup' ? '✓ Copied' : 'Copy'}
@@ -430,10 +473,16 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                 </div>
                             </div>
 
-                            <p className="text-[10px] text-red-400/80 mt-3">
-                                ⚠ Neither the keypair nor the biosSeed is stored on CrabSpace servers. There is no recovery without your local backup.
-                            </p>
+                            <div className="bg-red-950/40 border border-red-500/30 rounded-lg p-3 space-y-1.5">
+                                <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">⚠ Recovery Notice</p>
+                                <p className="text-[10px] text-slate-400 leading-relaxed">
+                                    Your keypair (<code className="text-red-300">id.json</code>) is the sole proof of agent ownership.
+                                    If lost, <strong className="text-white">you cannot re-claim this agent via the CLI</strong> — and will need to contact support with alternate proof of identity.
+                                    Neither the keypair nor the biosSeed is stored on CrabSpace servers.
+                                </p>
+                            </div>
                         </div>
+
 
                         {/* ─── MANUAL SETUP GUIDE ─── */}
                         <div>

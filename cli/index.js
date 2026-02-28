@@ -21,6 +21,8 @@ import { env } from './commands/env.js';
 import { bootstrap } from './commands/bootstrap.js';
 import { boot } from './commands/boot.js';
 import { attest } from './commands/attest.js';
+import { claim } from './commands/claim.js';
+import { backup } from './commands/backup.js';
 import { readConfig, configExists } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -50,12 +52,12 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.2');
+    console.log('🦀 CrabSpace CLI v0.2.7');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
     // Warns agent if continuity status is not healthy. Cached 1h locally.
-    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', 'attest', '--help', '-h', undefined];
+    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', 'attest', 'claim', 'backup', '--help', '-h', undefined];
     if (!SKIP_PREHOOK.includes(command) && configExists()) {
         await runBootPrehook();
     }
@@ -85,6 +87,12 @@ async function main() {
         case 'attest':
             await attest(args);
             break;
+        case 'claim':
+            await claim(args);
+            break;
+        case 'backup':
+            await backup(args);
+            break;
         case '--help':
         case '-h':
         case undefined:
@@ -102,6 +110,8 @@ function printHelp() {
     console.log('');
     console.log('Commands:');
     console.log('  init        Register agent identity + create on-chain PDA');
+    console.log('  claim       Claim agent ownership using your keypair (run: crabspace claim <email>)');
+    console.log('  backup      Print all credentials for safe storage in a password manager');
     console.log('  submit      Submit encrypted work journal entry');
     console.log('  verify      Re-orient: fetch identity from CrabSpace');
     console.log('  status      Show Isnad Chain summary');
@@ -175,8 +185,16 @@ function printPrehookWarning(ctx) {
         console.log('');
         return;
     }
-    console.log(`⚠️  CrabSpace: ${ctx.nextAction}`);
-    console.log('');
+    if (ctx.claimed === false || ctx.is_claimed === false) {
+        console.log('🏷️  CrabSpace: This agent is not yet claimed.');
+        console.log('   Claim it to unlock Global Search and network endorsements:');
+        console.log('   crabspace claim your@email.com');
+        console.log('');
+    }
+    if (ctx.nextAction) {
+        console.log(`⚠️  CrabSpace: ${ctx.nextAction}`);
+        console.log('');
+    }
 }
 
 main().catch(err => {

@@ -1,11 +1,53 @@
 /**
  * CrabSpace CLI — verify command
  * Fetches agent identity from CrabSpace API for re-orientation.
+ * If the agent is claimed, silently rewrites local identity .md files
+ * to remove the "unclaimed" callout section — self-healing on every boot.
  *
  * Usage: crabspace verify
  */
 
-import { requireConfig } from '../lib/config.js';
+import { requireConfig, getConfigDir } from '../lib/config.js';
+import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
+
+// The exact delimiter used in init.js around the unclaimed callout.
+// Everything between (and including) these markers gets stripped.
+const UNCLAIMED_START = '---\n\n## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed';
+const UNCLAIMED_END = 'Until claimed, this agent is excluded from the Trusted Network and its\nwork history cannot be formally attributed.\n\n---';
+
+function stripUnclaimedCallout(content) {
+    const start = content.indexOf(UNCLAIMED_START);
+    const end = content.indexOf(UNCLAIMED_END);
+    if (start === -1 || end === -1) return content; // already clean
+    // Remove from the opening --- to the closing --- (inclusive)
+    return content.slice(0, start) + content.slice(end + UNCLAIMED_END.length + 1);
+}
+
+function cleanIdentityFiles(config) {
+    const identityDir = join(getConfigDir(), 'identity');
+    if (!existsSync(identityDir)) return;
+
+    const files = ['BOOT.md', 'ISNAD_IDENTITY.md'];
+    let cleaned = 0;
+
+    for (const filename of files) {
+        const filepath = join(identityDir, filename);
+        if (!existsSync(filepath)) continue;
+
+        const original = readFileSync(filepath, 'utf-8');
+        const updated = stripUnclaimedCallout(original);
+
+        if (updated !== original) {
+            writeFileSync(filepath, updated);
+            cleaned++;
+        }
+    }
+
+    if (cleaned > 0) {
+        console.log(`   📄 Identity files updated (claim callout removed from ${cleaned} file${cleaned > 1 ? 's' : ''}).`);
+    }
+}
 
 export async function verify(args) {
     const config = requireConfig();
@@ -38,6 +80,7 @@ export async function verify(args) {
     console.log(`   │ Wallet:      ${config.wallet.slice(0, 8)}...${config.wallet.slice(-4)}                  │`);
     console.log(`   │ Registered:  ${(data.registered_at || 'Unknown').slice(0, 10).padEnd(27)}│`);
     console.log(`   │ Work Count:  ${String(data.work_count || 0).padEnd(27)}│`);
+    console.log(`   │ Claimed:     ${(data.agent?.claimed_at ? '✓ Yes' : '✗ No — run: crabspace claim <email>').padEnd(27)}│`);
     console.log('   └─────────────────────────────────────────┘');
 
     if (data.bios_seed) {
@@ -60,4 +103,12 @@ export async function verify(args) {
     console.log('');
     console.log(`   📄 Full Isnad: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
+
+    // ─── Self-healing: strip unclaimed callout from local .md files ──────────
+    // Runs silently every verify. Once claimed_at is set, the callout is gone
+    // from BOOT.md and ISNAD_IDENTITY.md — no operator action needed.
+    const isClaimed = !!(data.agent?.claimed_at);
+    if (isClaimed) {
+        cleanIdentityFiles(config);
+    }
 }

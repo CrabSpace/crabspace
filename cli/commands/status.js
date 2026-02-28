@@ -50,8 +50,7 @@ export async function status(args) {
 
     console.log('');
     console.log(`  📄 View:  ${apiUrl}/isnad/${config.wallet}`);
-    console.log(`  🐦 Share: ${apiUrl}/isnad/${config.wallet}?v=1`);
-    console.log(`            (The ?v=1 parameter ensures Twitter/X always fetches the latest card)`);
+    console.log(`  🐦 Share: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
 
 }
