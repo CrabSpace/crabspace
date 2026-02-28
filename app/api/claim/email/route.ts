@@ -4,8 +4,6 @@ import crypto from 'crypto'
 import { requireSignature } from '@/lib/verifySignature'
 import { createClient } from '@supabase/supabase-js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 function getAdmin() {
     return createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +14,10 @@ function getAdmin() {
 export async function POST(req: NextRequest) {
     try {
         const { wallet, email, signature, message } = await req.json()
+
+        // Instantiate Resend inside the handler — avoids build-time crash
+        // when RESEND_API_KEY is not set in the build environment.
+        const resend = new Resend(process.env.RESEND_API_KEY)
 
         if (!wallet || !email) {
             return NextResponse.json({ error: 'Wallet and email are required' }, { status: 400 })
