@@ -8,11 +8,10 @@ export async function GET() {
             .from('work_journal')
             .select('*', { count: 'exact', head: true })
 
-        // Fetch Total Unique Agents (Only confirmed claimed agents)
+        // Fetch Total Unique Agents (all registered agents)
         const { count: totalAgents, error: agentError } = await supabase
             .from('agents')
             .select('*', { count: 'exact', head: true })
-            .not('claimed_at', 'is', null)
 
         // Fetch Peer Verification Rate
         // Only count collaborative entries (client_wallet IS NOT NULL) —
