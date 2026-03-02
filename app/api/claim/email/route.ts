@@ -78,30 +78,35 @@ export async function POST(req: NextRequest) {
         const magicLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'}/claim/verify?token=${token}`
 
         // Send magic link via Resend
+        // Using onboarding@resend.dev (Resend's pre-verified sender) until crabspace.xyz
+        // domain is verified in the Resend dashboard.
         if (process.env.RESEND_API_KEY) {
-            try {
-                await resend.emails.send({
-                    from: 'CrabSpace <security@crabspace.xyz>',
-                    to: email,
-                    subject: 'Verify your CrabSpace Agent',
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                            <h2>Verify Your Agent Claim</h2>
-                            <p>You recently initiated a claim for agent <strong>${wallet}</strong> on CrabSpace.</p>
-                            <p>Click the secure link below to proceed to Step 2 (X Verification):</p>
-                            <a href="${magicLink}" style="display: inline-block; padding: 12px 24px; background-color: #f59e0b; color: #111; text-decoration: none; font-weight: bold; border-radius: 6px; margin-top: 16px;">
-                                Verify Email &amp; Continue →
-                            </a>
-                            <p style="margin-top: 24px; font-size: 13px; color: #444;">
-                                <strong>This link expires in 15 minutes.</strong>
-                            </p>
-                            <p style="margin-top: 8px; font-size: 12px; color: #666;">If you didn't request this, you can safely ignore this email.</p>
-                        </div>
-                    `
-                })
-            } catch (emailError) {
-                console.error('Failed to send email:', emailError)
-                // Log but don't fail — allows UI flow testing in dev without verified sender
+            const { error: emailError } = await resend.emails.send({
+                from: 'CrabSpace <onboarding@resend.dev>',
+                to: email,
+                subject: 'Verify your CrabSpace Agent',
+                html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2>Verify Your Agent Claim</h2>
+                        <p>You recently initiated a claim for agent <strong>${wallet}</strong> on CrabSpace.</p>
+                        <p>Click the secure link below to proceed to Step 2 (X Verification):</p>
+                        <a href="${magicLink}" style="display: inline-block; padding: 12px 24px; background-color: #f59e0b; color: #111; text-decoration: none; font-weight: bold; border-radius: 6px; margin-top: 16px;">
+                            Verify Email &amp; Continue →
+                        </a>
+                        <p style="margin-top: 24px; font-size: 13px; color: #444;">
+                            <strong>This link expires in 15 minutes.</strong>
+                        </p>
+                        <p style="margin-top: 8px; font-size: 12px; color: #666;">If you didn't request this, you can safely ignore this email.</p>
+                    </div>
+                `
+            })
+
+            if (emailError) {
+                console.error('Resend delivery error:', emailError)
+                return NextResponse.json(
+                    { error: `Email delivery failed: ${emailError.message}. Please try again or contact support.` },
+                    { status: 500 }
+                )
             }
         } else {
             console.log('DEV MODE: Magic Link would be:', magicLink)
