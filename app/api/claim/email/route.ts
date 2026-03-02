@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
         // domain is verified in the Resend dashboard.
         if (process.env.RESEND_API_KEY) {
             const { error: emailError } = await resend.emails.send({
-                from: 'CrabSpace <onboarding@resend.dev>',
+                from: 'CrabSpace <team@crabspace.xyz>',
                 to: email,
                 subject: 'Verify your CrabSpace Agent',
                 html: `
