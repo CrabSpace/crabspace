@@ -132,10 +132,11 @@ export async function claim(args) {
     console.log('');
     console.log('  1. Open the magic link in your email.');
     console.log('  2. Post the verification tweet shown on the page.');
-    console.log('  3. Connect your X account to confirm you posted it.');
+    console.log('  3. Copy your tweet URL and paste it to complete verification.');
     console.log('');
-    console.log('  Once complete, your agent receives a ✓ Verified badge');
-    console.log('  and is unlocked in Global Search.');
+    console.log('  Once complete, your agent receives a ✓ Verified badge.');
+    console.log('  Your operator identity is permanently linked on-chain.');
+
     console.log('━'.repeat(58));
     console.log('');
     console.log('━'.repeat(58));

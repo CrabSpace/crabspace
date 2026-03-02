@@ -17,11 +17,6 @@ function getAdmin() {
 
 export async function POST(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('authorization')
-        if (!authHeader) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
         const { claimId, tweetUrl } = await req.json()
 
         if (!claimId || !tweetUrl) {
@@ -30,26 +25,7 @@ export async function POST(req: NextRequest) {
 
         const supabaseAdmin = getAdmin()
 
-        // 1. Verify the OAuth session — proves who the current user is
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-            authHeader.replace('Bearer ', '')
-        )
-
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
-        }
-
-        // The user's X handle is stored in Supabase metadata after Twitter OAuth
-        const xHandle = user.user_metadata?.preferred_username || user.user_metadata?.user_name
-
-        if (!xHandle) {
-            return NextResponse.json(
-                { error: 'Could not resolve X identity from session. Did you connect via X?' },
-                { status: 400 }
-            )
-        }
-
-        // 2. Fetch the claim record
+        // 1. Fetch the claim record
         const { data: claim, error: claimError } = await supabaseAdmin
             .from('operator_claims')
             .select('*')
@@ -64,22 +40,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Already claimed' }, { status: 400 })
         }
 
-        // 3. ─── Token TTL Check ─────────────────────────────────────────────
-        // Magic links expire after 15 minutes to limit replay exposure.
+        // 2. ─── Token TTL Check ─────────────────────────────────────────────
         const claimAge = Date.now() - new Date(claim.created_at).getTime()
         if (claimAge > CLAIM_TTL_MS) {
             return NextResponse.json(
-                {
-                    error: 'This verification link has expired. Please run `crabspace claim <email>` again to get a new link.'
-                },
+                { error: 'This verification link has expired. Please run `crabspace claim <email>` again to get a new link.' },
                 { status: 410 }
             )
         }
 
+        // 3. Extract X handle and Tweet ID from URL
+        // e.g. https://x.com/USERNAME/status/1831032174313206263
+        const match = tweetUrl.match(/(?:twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/i)
+        if (!match || !match[1] || !match[2]) {
+            return NextResponse.json({ error: 'Invalid X URL format' }, { status: 400 })
+        }
+        const xHandle = match[1]
+        const tweetId = match[2]
+
         // 4. ─── X Account-Age Gate (via vxtwitter — free) ──────────────────
-        // Fetches the operator's public X profile to check account creation date.
-        // Requires account to be at least 30 days old to prevent throwaway accounts.
-        // Uses the same api.vxtwitter.com service as tweet verification — no API key needed.
+        // Handle extracted from URL — no OAuth required.
         let userJoinedDate: Date | null = null
         try {
             const profileRes = await fetch(`https://api.vxtwitter.com/${xHandle}`, {
@@ -87,16 +67,13 @@ export async function POST(req: NextRequest) {
             })
             if (profileRes.ok) {
                 const profileData = await profileRes.json()
-                // vxtwitter returns `user.joined` as a Twitter-format date string
-                // e.g. "Tue Feb 20 14:35:54 +0000 2007"
                 const joinedStr = profileData?.user?.joined || profileData?.joined
                 if (joinedStr) {
                     userJoinedDate = new Date(joinedStr)
                 }
             }
         } catch (profileErr) {
-            // Non-blocking: if vxtwitter is down, we skip the age gate rather than
-            // blocking legitimate operators. Log for monitoring.
+            // Non-blocking: if vxtwitter is down, skip age gate rather than blocking
             console.warn('vxtwitter profile fetch failed (age gate skipped):', profileErr)
         }
 
@@ -113,15 +90,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 5. Extract Tweet ID from URL
-        // e.g. https://x.com/username/status/1831032174313206263
-        const match = tweetUrl.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/i)
-        if (!match || !match[1]) {
-            return NextResponse.json({ error: 'Invalid X URL format' }, { status: 400 })
-        }
-        const tweetId = match[1]
-
-        // 6. Fetch tweet data via free api.vxtwitter.com
+        // 5. Fetch tweet data via free api.vxtwitter.com
         const vxResponse = await fetch(`https://api.vxtwitter.com/status/${tweetId}`, {
             headers: { 'User-Agent': 'CrabSpace-Verification-Bot/1.0' }
         })
@@ -135,14 +104,14 @@ export async function POST(req: NextRequest) {
 
         const vxData = await vxResponse.json()
 
-        // 7. ─── Validation Logic ─────────────────────────────────────────────
+        // 6. ─── Validation Logic ─────────────────────────────────────────────
         const fetchedText: string = vxData.text || ''
         const fetchedAuthor: string = vxData.user_screen_name || ''
 
-        // Rule A: Tweet author must match the authenticated X user
+        // Rule A: Tweet author must match handle extracted from URL
         if (fetchedAuthor.toLowerCase() !== xHandle.toLowerCase()) {
             return NextResponse.json(
-                { error: `Tweet author (@${fetchedAuthor}) does not match your connected account (@${xHandle})` },
+                { error: `Tweet author mismatch. Please use the direct URL from your own post.` },
                 { status: 403 }
             )
         }
@@ -155,7 +124,7 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // 8. ─── SUCCESS ─────────────────────────────────────────────────────
+        // 7. ─── SUCCESS ─────────────────────────────────────────────────────
         await supabaseAdmin
             .from('operator_claims')
             .update({ status: 'claimed' })
