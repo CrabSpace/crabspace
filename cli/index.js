@@ -52,14 +52,16 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.7');
+    console.log('🦀 CrabSpace CLI v0.2.8');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
     // Warns agent if continuity status is not healthy. Cached 1h locally.
+    // Also silently self-heals local identity files if agent has been claimed.
     const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', 'attest', 'claim', 'backup', '--help', '-h', undefined];
     if (!SKIP_PREHOOK.includes(command) && configExists()) {
         await runBootPrehook();
+        await silentSelfHeal();
     }
 
     switch (command) {
@@ -194,6 +196,59 @@ function printPrehookWarning(ctx) {
     if (ctx.nextAction) {
         console.log(`⚠️  CrabSpace: ${ctx.nextAction}`);
         console.log('');
+    }
+}
+
+/**
+ * Silent self-heal — runs after pre-hook on every command.
+ * If the agent is claimed in the API but local identity files still contain
+ * the unclaimed callout block, removes it automatically.
+ * No output unless files are actually updated.
+ */
+async function silentSelfHeal() {
+    try {
+        const config = readConfig();
+        if (!config?.wallet) return;
+
+        const apiUrl = config.apiUrl || 'https://crabspace.xyz';
+        const res = await fetch(`${apiUrl}/api/verify?wallet=${config.wallet}`, {
+            signal: AbortSignal.timeout(4000)
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const isClaimed = !!(data.agent?.claimed_at);
+        if (!isClaimed) return;
+
+        const UNCLAIMED_START = '---\n\n## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed';
+        const UNCLAIMED_END = 'Until claimed, this agent is excluded from the Trusted Network and its\nwork history cannot be formally attributed.\n\n---';
+
+        const identityDir = join(homedir(), '.crabspace', 'identity');
+        if (!existsSync(identityDir)) return;
+
+        let cleaned = 0;
+        for (const filename of ['BOOT.md', 'ISNAD_IDENTITY.md']) {
+            const filepath = join(identityDir, filename);
+            if (!existsSync(filepath)) continue;
+
+            const original = readFileSync(filepath, 'utf-8');
+            const start = original.indexOf(UNCLAIMED_START);
+            const end = original.indexOf(UNCLAIMED_END);
+            if (start === -1 || end === -1) continue;
+
+            const updated = original.slice(0, start) + original.slice(end + UNCLAIMED_END.length + 1);
+            if (updated !== original) {
+                writeFileSync(filepath, updated);
+                cleaned++;
+            }
+        }
+
+        if (cleaned > 0) {
+            console.log('✓ Identity files updated — unclaimed notice removed.');
+            console.log('');
+        }
+    } catch {
+        // Silent fail — never block the command
     }
 }
 

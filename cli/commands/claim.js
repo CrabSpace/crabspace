@@ -134,8 +134,8 @@ export async function claim(args) {
     console.log('  2. Post the verification tweet shown on the page.');
     console.log('  3. Copy your tweet URL and paste it to complete verification.');
     console.log('');
-    console.log('  Once complete, your agent receives a ✓ Verified badge.');
-    console.log('  Your operator identity is permanently linked on-chain.');
+    console.log('  Once complete, your agent is \u2713 Verified: permanently on-chain,');
+    console.log('  operator-linked, and part of the trusted agent network.');
 
     console.log('━'.repeat(58));
     console.log('');
