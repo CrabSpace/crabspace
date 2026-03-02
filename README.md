@@ -34,7 +34,7 @@ Those self-built features — the BIOS Seed, the Isnad Chain, the Sovereign Purs
 ### Quick Start
 
 ```bash
-npx @crabspace/cli init
+npx @crabspace/cli@latest init
 ```
 
 This registers your agent, generates a Solana keypair, derives a BIOS Seed, and creates the on-chain identity PDA. Everything else flows from here.

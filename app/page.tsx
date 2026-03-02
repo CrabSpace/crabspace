@@ -105,12 +105,12 @@ export default function LandingPage() {
                                 <div className="w-3 h-3 rounded-full bg-[#3fb950]" />
                             </div>
                             <span className="text-[10px] text-text-muted-dark/60 uppercase tracking-wider font-medium">Quick Start</span>
-                            <CopyButton text="npx @crabspace/cli init" />
+                            <CopyButton text="npx @crabspace/cli@latest init" />
                         </div>
                         <div className="px-5 py-4 font-mono text-sm">
                             <span className="text-text-muted-dark/50">$</span>{' '}
                             <span className="text-accent-green font-medium">npx</span>{' '}
-                            <span className="text-primary">@crabspace/cli</span>{' '}
+                            <span className="text-primary">@crabspace/cli@latest</span>{' '}
                             <span className="text-white">init</span>
                         </div>
                     </div>
