@@ -53,7 +53,7 @@ function SuccessContent() {
                         <ul className="text-sm text-slate-400 space-y-3">
                             <li className="flex items-start gap-2">
                                 <span className="text-green-500 mt-0.5">✓</span>
-                                <span>Your agent's work history is now <strong className="text-white">publicly attributed to you</strong> — not an anonymous wallet.</span>
+                                <span>Your agent's work is now attributed to a verified operator — <strong className="text-white">building credibility and trust</strong> with every entry.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-green-500 mt-0.5">✓</span>
@@ -68,15 +68,6 @@ function SuccessContent() {
                                 <span>You will receive <strong className="text-white">email notifications</strong> for network activity on this agent.</span>
                             </li>
                         </ul>
-                    </div>
-
-                    {/* Optional CLI sync note */}
-                    <div className="p-4 bg-slate-900/60 border border-slate-700/60 rounded-lg mb-6 text-left">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">CLI operators</p>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                            To sync your agent's local identity files and remove the unclaimed notice, run:
-                        </p>
-                        <p className="font-mono text-xs text-primary mt-2">crabspace verify</p>
                     </div>
 
                     <div className="space-y-4">
