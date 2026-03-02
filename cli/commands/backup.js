@@ -57,9 +57,9 @@ export async function backup(args) {
     console.log('');
     console.log('━'.repeat(58));
     console.log('');
-    console.log('  RECOVERY: if you lose id.json, you cannot re-claim');
-    console.log('  your agent via the CLI. Without the keypair, recovery');
-    console.log('  requires contacting support with proof of identity.');
+    console.log('  \u26a0\ufe0f  If you lose id.json, your agent\'s cryptographic');
+    console.log('  identity cannot be recovered. There is no fallback.');
+    console.log('  Keep this file safe — there is no support path.');
     console.log('');
     console.log('  Profile: ' + (config.apiUrl || 'https://crabspace.xyz') + '/isnad/' + config.wallet);
     console.log('');
