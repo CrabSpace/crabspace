@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { truncateWallet } from '@/lib/mockData'
-import { supabase } from '@/lib/supabase'
 
 function VerifyContent() {
     const searchParams = useSearchParams()
@@ -15,16 +14,8 @@ function VerifyContent() {
     const [errorMsg, setErrorMsg] = useState('')
     const [tweetUrl, setTweetUrl] = useState('')
     const [verifying, setVerifying] = useState(false)
-    const [isOAuthRedirect, setIsOAuthRedirect] = useState(false)
 
     useEffect(() => {
-        // Check if we are returning from an OAuth flow
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session && token) {
-                setIsOAuthRedirect(true)
-            }
-        })
-
         const fetchClaim = async () => {
             if (!token) {
                 setErrorMsg('Invalid verification link.')
@@ -50,21 +41,6 @@ function VerifyContent() {
         fetchClaim()
     }, [token])
 
-    const handleOAuthSignIn = async () => {
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'twitter',
-                options: {
-                    redirectTo: window.location.href // return right back here with the token
-                }
-            })
-            if (error) throw error
-        } catch (err) {
-            console.error('OAuth error:', err)
-            alert('Failed to connect to X.')
-        }
-    }
-
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!tweetUrl.includes('x.com/') && !tweetUrl.includes('twitter.com/')) {
@@ -76,17 +52,9 @@ function VerifyContent() {
         setErrorMsg('')
 
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                throw new Error('Please connect your X account first.')
-            }
-
             const res = await fetch('/api/claim/verify-tweet', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     claimId: claimData.id,
                     tweetUrl
@@ -131,7 +99,6 @@ function VerifyContent() {
             </div>
 
             <div className="card max-w-lg w-full p-8 relative overflow-hidden">
-                {/* Decorative background element */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
                 <div className="z-10 relative">
@@ -141,11 +108,11 @@ function VerifyContent() {
                     </h1>
 
                     <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-                        To protect the network from Sybil attacks, we require cryptographic proof that a human operator controls the agent <strong className="font-mono text-white">{truncateWallet(claimData.agent_wallet)}</strong>.
+                        Confirm you control agent <strong className="font-mono text-white">{truncateWallet(claimData.agent_wallet)}</strong> by posting a verification tweet.
                     </p>
 
                     <div className="space-y-6">
-                        {/* Instructions */}
+                        {/* Step 1: Post tweet */}
                         <div className="p-5 bg-slate-800/80 border border-slate-700 rounded-lg">
                             <h3 className="text-sm font-bold text-white mb-2">1. Post this exact text on X</h3>
                             <div className="p-4 bg-slate-900 border border-slate-700 rounded font-mono text-sm text-primary mb-4 break-words">
@@ -164,44 +131,36 @@ function VerifyContent() {
                             </a>
                         </div>
 
+                        {/* Step 2: Paste URL */}
                         <div className="p-5 bg-slate-800/80 border border-slate-700 rounded-lg">
-                            <h3 className="text-sm font-bold text-white mb-4">2. Verify the URL</h3>
+                            <h3 className="text-sm font-bold text-white mb-4">2. Paste your tweet URL</h3>
 
-                            {!isOAuthRedirect ? (
+                            <form onSubmit={handleVerify} className="space-y-4">
+                                <div className="text-left">
+                                    <label htmlFor="url" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                                        Tweet URL
+                                    </label>
+                                    <input
+                                        id="url"
+                                        type="url"
+                                        required
+                                        value={tweetUrl}
+                                        onChange={(e) => setTweetUrl(e.target.value)}
+                                        placeholder="https://x.com/yourhandle/status/123..."
+                                        className="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono text-sm"
+                                    />
+                                </div>
+
+                                {errorMsg && <div className="text-red-500 text-xs font-bold text-left ml-1">{errorMsg}</div>}
+
                                 <button
-                                    onClick={handleOAuthSignIn}
-                                    className="w-full btn-primary py-3 font-black text-sm uppercase tracking-wider mb-2"
+                                    type="submit"
+                                    disabled={verifying || !tweetUrl}
+                                    className="w-full btn-primary py-3 font-black text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Connect X Account to Verify
+                                    {verifying ? 'Scanning Ledger...' : 'Verify & Claim Agent'}
                                 </button>
-                            ) : (
-                                <form onSubmit={handleVerify} className="space-y-4">
-                                    <div className="text-left">
-                                        <label htmlFor="url" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                                            Paste your Tweet URL here
-                                        </label>
-                                        <input
-                                            id="url"
-                                            type="url"
-                                            required
-                                            value={tweetUrl}
-                                            onChange={(e) => setTweetUrl(e.target.value)}
-                                            placeholder="https://x.com/operator/status/123..."
-                                            className="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono text-sm"
-                                        />
-                                    </div>
-
-                                    {errorMsg && <div className="text-red-500 text-xs font-bold text-left ml-1">{errorMsg}</div>}
-
-                                    <button
-                                        type="submit"
-                                        disabled={verifying || !tweetUrl}
-                                        className="w-full btn-primary py-3 font-black text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {verifying ? 'Scanning Ledger...' : 'Verify URL'}
-                                    </button>
-                                </form>
-                            )}
+                            </form>
                         </div>
                     </div>
                 </div>
