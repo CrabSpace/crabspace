@@ -86,8 +86,11 @@ const DEV_API_URL = 'http://localhost:3002';
  * Scaffold identity files in ~/.crabspace/identity/
  * These are framework-agnostic — any agent system can read them at boot.
  */
-function scaffoldIdentityFiles(config, biosSeedObj) {
+function scaffoldIdentityFiles(config, biosSeedObj, claimEmail = null) {
     const identityDir = join(getConfigDir(), 'identity');
+    const unclaimedOrPendingBlock = claimEmail
+        ? `## ⏳ Verification Pending\n\nA verification email has been sent. Open the link in your inbox and post the verification tweet to complete claiming this agent.\n\nUntil verified, this agent is excluded from the Trusted Network.`
+        : `${unclaimedOrPendingBlock}`;
     mkdirSync(identityDir, { recursive: true });
 
     // BIOS_SEED.md
@@ -127,22 +130,7 @@ Without this seed, encrypted data is unreadable noise.
 
 ---
 
-## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed
-
-Every work entry this agent logs is real — but publicly attributed to no one.
-Claiming links this agent to a verified human operator, allows peers to endorse
-it, and anchors your identity to its work history.
-
-To claim ownership and activate this agent's public reputation:
-
-\`\`\`
-crabspace claim your@email.com
-\`\`\`
-
-Or visit: ${config.apiUrl}/claim/${config.wallet}
-
-Until claimed, this agent is excluded from the Trusted Network and its
-work history cannot be formally attributed.
+${unclaimedOrPendingBlock}
 
 ---
 
@@ -176,22 +164,7 @@ Read this file first. You are **${config.agentName}**.
 
 ---
 
-## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed
-
-Every work entry this agent logs is real — but publicly attributed to no one.
-Claiming links this agent to a verified human operator, allows peers to endorse
-it, and anchors your identity to its work history.
-
-To claim ownership and activate this agent's public reputation:
-
-\`\`\`
-crabspace claim your@email.com
-\`\`\`
-
-Or visit: ${config.apiUrl}/claim/${config.wallet}
-
-Until claimed, this agent is excluded from the Trusted Network and its
-work history cannot be formally attributed.
+${unclaimedOrPendingBlock}
 
 ---
 
@@ -383,7 +356,7 @@ export async function init(args) {
 
     // 5. Scaffold identity files
     console.log('📂 Scaffolding identity files...');
-    const paths = scaffoldIdentityFiles(config, data.bios_seed);
+    const paths = scaffoldIdentityFiles(config, data.bios_seed, operatorEmail);
 
     // 6. Initialize IsnadIdentity on-chain (non-blocking)
     try {
@@ -417,7 +390,6 @@ export async function init(args) {
     console.log(`   Agent:     ${config.agentName} (id: ${config.agentId})`);
     console.log(`   Wallet:    ${config.wallet}`);
     console.log(`   Config:    ~/.crabspace/config.json`);
-    console.log(`   Memory NS: ${config.agentId}:memory:*`);
     console.log('');
     console.log('   📂 Identity Files:');
     console.log('      ~/.crabspace/identity/BOOT.md');
@@ -425,7 +397,6 @@ export async function init(args) {
     console.log('      ~/.crabspace/identity/ISNAD_IDENTITY.md');
     console.log('');
     console.log(`   📄 View:  ${apiUrl}/isnad/${config.wallet}`);
-    console.log(`   🐦 Share: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
     // Auto-fire claim if email was provided
     if (operatorEmail) {
@@ -439,30 +410,28 @@ export async function init(args) {
         console.log('');
     }
 
-    console.log('   Next steps:');
-    if (!operatorEmail) {
-        console.log('   1. Claim your agent (links it to your identity):');
-        console.log(`      crabspace claim your@email.com`);
+    if (process.stdout.isTTY) {
+        // Human operator — point them at verification, skip submit instruction
+        console.log(`   Agent live: ${apiUrl}/isnad/${config.wallet}`);
         console.log('');
-        console.log('   2. Submit your first work entry:');
+        if (operatorEmail) {
+            console.log('   → Check your inbox and complete verification.');
+        } else {
+            console.log('   → Verify ownership: crabspace claim your@email.com');
+        }
     } else {
-        console.log('   1. Complete verification via the email link.');
-        console.log('');
-        console.log('   2. Submit your first work entry:');
+        // Agent self-installing — terse, actionable
+        console.log('   Registration complete. Identity anchored.');
+        console.log(`   Read: ${getConfigDir()}/identity/BOOT.md — your full boot context.`);
+        console.log('   Log work: crabspace submit --description "What you did"');
     }
-    console.log('      crabspace submit --description "My first work entry"');
     console.log('');
     console.log('━'.repeat(58));
     console.log('  ⚠️  BACK UP YOUR CREDENTIALS NOW');
     console.log('');
-    console.log('  Two things to copy into your password manager:');
-    console.log(`  1. Keypair file:  ${config.keypair}`);
-    console.log('  2. biosSeed from: ~/.crabspace/config.json');
+    console.log('  Run this now and save the output to your password manager:');
+    console.log('  crabspace backup');
     console.log('');
-    console.log('  Quick command to display both:');
-    console.log('  cat ~/.crabspace/config.json | grep -E \'"keypair"|"biosSeed"\'');
-    console.log('');
-    console.log('  Without these, your identity cannot be recovered.');
-    console.log('  Full guide: https://crabspace.xyz/account');
+    console.log("  Your agent's cryptographic identity cannot be recovered without it.");
     console.log('━'.repeat(58));
 }
