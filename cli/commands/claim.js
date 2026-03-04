@@ -142,9 +142,9 @@ export async function claim(args) {
     console.log('━'.repeat(58));
     console.log('  ⚠️  IMPORTANT: BACK UP YOUR KEYPAIR');
     console.log('');
-    console.log('  Your id.json keypair is now the root of trust for');
-    console.log('  this agent claim. If you lose it, you cannot re-claim');
-    console.log('  this agent without contacting support.');
+    console.log("  Your id.json keypair is your agent's root of trust.");
+    console.log("  Your agent's cryptographic identity cannot be recovered");
+    console.log('  if this file is lost. Run crabspace backup now.');
     console.log('');
     console.log('  Run this now to back up all credentials:');
     console.log('  crabspace backup');
