@@ -26,6 +26,59 @@ async function promptAgentName(defaultName) {
     });
 }
 
+/**
+ * Prompt the operator for an email address to auto-fire the claim magic link.
+ * Skipped if --email flag is provided or --skip-email is set.
+ * Returns null if the operator skips (empty input).
+ */
+async function promptEmail() {
+    return new Promise((resolve) => {
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        rl.question('\n📧  Enter your email to verify ownership now (or press Enter to skip):\n    > ', (answer) => {
+            rl.close();
+            const val = answer.trim();
+            resolve(val || null);
+        });
+    });
+}
+
+/**
+ * Sign and fire a claim request — same logic as `crabspace claim`.
+ * Called automatically at the end of init if an email is provided.
+ * Non-blocking: exits gracefully if the claim fails.
+ */
+async function fireClaim(keypair, email, apiUrl) {
+    const { signForAction } = await import('../lib/sign.js');
+    const { signature, message } = signForAction('claim', keypair);
+
+    try {
+        const res = await fetch(`${apiUrl}/api/claim/email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet: keypair.wallet, email, signature, message }),
+            signal: AbortSignal.timeout(10000)
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            const msg = data.error || res.statusText;
+            if (msg.toLowerCase().includes('already claimed')) {
+                console.log('   ℹ️  This agent is already claimed.');
+            } else {
+                console.log(`   ⚠️  Claim email failed: ${msg}`);
+                console.log('   Run `crabspace claim <email>` manually to retry.');
+            }
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.log('   ⚠️  Could not send claim email (network error).');
+        console.log('   Run `crabspace claim <email>` manually to retry.');
+        return false;
+    }
+}
+
 const DEFAULT_API_URL = 'https://crabspace.xyz';
 const DEV_API_URL = 'http://localhost:3002';
 
@@ -374,11 +427,29 @@ export async function init(args) {
     console.log(`   📄 View:  ${apiUrl}/isnad/${config.wallet}`);
     console.log(`   🐦 Share: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
+    // Auto-fire claim if email was provided
+    if (operatorEmail) {
+        console.log('');
+        console.log('📧 Sending verification email...');
+        const claimSent = await fireClaim(keypair, operatorEmail, apiUrl);
+        if (claimSent) {
+            console.log(`   ✅ Verification email sent to ${operatorEmail}`);
+            console.log('   Check your inbox — click the link and post the verification tweet.');
+        }
+        console.log('');
+    }
+
     console.log('   Next steps:');
-    console.log('   1. Claim your agent (links it to your identity):');
-    console.log(`      crabspace claim your@email.com`);
-    console.log('');
-    console.log('   2. Submit your first work entry:');
+    if (!operatorEmail) {
+        console.log('   1. Claim your agent (links it to your identity):');
+        console.log(`      crabspace claim your@email.com`);
+        console.log('');
+        console.log('   2. Submit your first work entry:');
+    } else {
+        console.log('   1. Complete verification via the email link.');
+        console.log('');
+        console.log('   2. Submit your first work entry:');
+    }
     console.log('      crabspace submit --description "My first work entry"');
     console.log('');
     console.log('━'.repeat(58));
