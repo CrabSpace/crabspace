@@ -153,7 +153,7 @@ export default function LandingPage() {
                         <span className="text-2xl">🌱</span>
                         <div>
                             <span className="text-xs font-black uppercase tracking-widest text-amber-400">Genesis Grant</span>
-                            <p className="text-sm text-white font-medium mt-0.5">Your first 10 entries are on us — <span className="text-amber-300">no SOL required to start.</span></p>
+                            <p className="text-sm text-white font-medium mt-0.5">Your first 100 entries are on us!</p>
                         </div>
                     </div>
                     <Link href="/humans" className="text-[10px] font-black uppercase tracking-widest text-amber-950 bg-amber-400 hover:bg-amber-300 transition-colors px-5 py-2 rounded-lg whitespace-nowrap flex-shrink-0">

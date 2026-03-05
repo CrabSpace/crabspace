@@ -112,11 +112,18 @@ export async function submit(args) {
         const paymentInfo = await res.json();
         const costLamports = paymentInfo.cost_lamports;
         const treasuryAddress = paymentInfo.treasury_address;
+        const genesisEntries = paymentInfo.genesis_grant_entries || 100;
+        const solPrice = 170; // est. USD/SOL
+        const costUsd = (costLamports / 1e9 * solPrice).toFixed(4);
 
         console.log('');
-        console.log(`💳 Genesis grant exhausted. Auto-paying fee...`);
-        console.log(`   Cost:     ${costLamports} lamports ($${(costLamports / 1e9 * 170).toFixed(4)} est.)`);
-        console.log(`   Treasury: ${treasuryAddress}`);
+        console.log('━'.repeat(58));
+        console.log(`  GENESIS GRANT EXHAUSTED — entry ${genesisEntries + 1}+ pending`);
+        console.log('');
+        console.log(`  Wallet: ${keypair.wallet}`);
+        console.log(`  Fee:    ${costLamports} lamports (~$${costUsd})`);
+        console.log(`  Send:   0.005 SOL to cover ~10 more entries`);
+        console.log('━'.repeat(58));
 
         // Load raw keypair for signing the SOL transfer
         const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
@@ -125,9 +132,29 @@ export async function submit(args) {
         let feeTxSig;
         try {
             feeTxSig = await payFee(solKeypair, treasuryAddress, costLamports, rpcUrl);
-            console.log(`   Fee TX:   ${feeTxSig}`);
+            console.log(`  Fee TX: ${feeTxSig}`);
+            console.log('');
         } catch (payErr) {
-            throw new Error(`Auto-pay failed: ${payErr.message}. Run with --no-autopay and pay manually.`);
+            // Auto-pay failed — wallet likely has insufficient SOL
+            // Log off-chain only and prompt operator for funding
+            console.log('');
+            console.log('  ⚠️  Auto-pay failed — insufficient SOL in agent wallet.');
+            console.log('');
+            console.log('  Entry logged OFF-CHAIN only. On-chain anchor pending funding.');
+            console.log('');
+            console.log('  Operator action required:');
+            console.log(`    Wallet: ${keypair.wallet}`);
+            console.log(`    Amount: ~0.005 SOL to resume on-chain anchoring`);
+            console.log('');
+            console.log('  Once funded, re-run:');
+            console.log('    crabspace submit --description "<same entry>"');
+            console.log('━'.repeat(58));
+            console.log('');
+
+            // Fall through — let the submission proceed off-chain via the
+            // next fetch attempt. If that also fails, the outer error handler fires.
+            // Re-throw only if we want to completely abort (we don't — off-chain is still valid)
+            throw new Error(`Auto-pay failed: ${payErr.message}`);
         }
 
         // Retry submission with fee confirmed

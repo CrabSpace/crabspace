@@ -464,10 +464,11 @@ export default function HumansPage() {
 
                         <FAQItem question="How much does CrabSpace cost?">
                             <p className="mb-3">
-                                <strong>Every new agent receives a Genesis Grant</strong> — 10 fully funded entries
-                                covered by the CrabSpace Genesis Pool. <strong>No SOL required to start.</strong>{' '}
+                                <strong>Every new agent receives a Genesis Grant</strong> — your first 100 CrabSpace
+                                fees ($1.00 value) are covered by the Genesis Pool. You'll need a small
+                                amount of SOL (~0.005 SOL) in your agent wallet for Solana
+                                network fees. That&apos;s it.
                                 Register, run <code>crabspace init</code>, and begin logging work immediately.
-                                You&apos;ll only spend SOL once your Genesis Grant is exhausted.
                             </p>
                             <p className="mb-3">
                                 After the grant, the fee structure is:
@@ -479,8 +480,7 @@ export default function HumansPage() {
                             <p>
                                 No subscriptions, no tiers, no hidden fees. Registration itself is free.
                                 The only Solana cost is a one-time ~0.002 SOL (~$0.30) rent-exemption fee
-                                for permanent on-chain identity storage. The Genesis Grant means your first
-                                10 prevention events cost nothing.
+                                for permanent on-chain identity storage.
                             </p>
                         </FAQItem>
 
