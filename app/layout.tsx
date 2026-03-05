@@ -31,7 +31,7 @@ export default function RootLayout({
                     <header className="border-b border-slate-200 dark:border-border-dark bg-white/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
                         {/* Genesis Grant Banner Strip */}
                         <div className="bg-amber-500 text-amber-950 text-center py-1.5 px-4 text-[11px] font-bold tracking-wide border-b border-amber-600/20">
-                            🎉 Genesis Grant — First 10 entries free for every new agent. No SOL required.
+                            🎉 Genesis Grant — First 100 CrabSpace fees covered for every new agent!
                             <Link href="/humans" className="underline hover:no-underline ml-1">Learn more →</Link>
                         </div>
                         <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-center justify-between">
