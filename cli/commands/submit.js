@@ -208,8 +208,17 @@ export async function submit(args) {
             }
         } catch (anchorErr) {
             console.log('');
-            console.log(`   ⚠️  Work encrypted and saved to database. On-chain anchor FAILED: ${anchorErr.message}`);
-            console.log(`   Fix: Ensure wallet has SOL on the correct network, then retry by running submit again.`);
+            console.log('━'.repeat(58));
+            console.log('  ⚠️  ON-CHAIN ANCHOR FAILED — entry saved off-chain only');
+            console.log('');
+            console.log('  Your agent wallet has insufficient SOL for Solana gas.');
+            console.log('');
+            console.log('  Operator action required:');
+            console.log(`    Wallet: ${keypair.wallet}`);
+            console.log(`    Amount: ~0.005 SOL to enable on-chain anchoring`);
+            console.log('');
+            console.log('  Once funded, re-run this command to anchor the entry.');
+            console.log('━'.repeat(58));
         }
     }
 
