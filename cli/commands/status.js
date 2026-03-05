@@ -27,6 +27,11 @@ export async function status(args) {
     const data = await res.json();
     const agent = data.agent || {};
 
+    const total = agent.total_work_entries ?? 0;
+    const anchored = agent.anchored_entries ?? 0;
+    const unanchored = agent.unanchored_entries ?? 0;
+    const genesisRemaining = Math.max(0, 100 - total);
+
     console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`  🦀 ${agent.name || config.agentName || 'Unknown Agent'}`);
@@ -34,7 +39,18 @@ export async function status(args) {
     console.log('');
     console.log(`  Wallet:      ${config.wallet}`);
     console.log(`  Registered:  ${agent.created_at ? new Date(agent.created_at).toLocaleDateString() : (config.registeredAt || 'Unknown')}`);
-    console.log(`  Work Count:  ${agent.total_work_entries ?? 0} entries`);
+    console.log(`  Claimed:     ${agent.claimed_at ? '✓ Yes' : '✗ No (run: crabspace claim <email>)'}`);
+    console.log('');
+    console.log(`  Entries:     ${total} total`);
+    console.log(`  On-chain:    ${anchored} anchored ✓`);
+    if (unanchored > 0) {
+        console.log(`  Pending:     ${unanchored} off-chain ⚠️  (fund wallet to anchor)`);
+        console.log(`    Wallet:    ${config.wallet}`);
+        console.log(`    Amount:    ~0.005 SOL, then re-run: crabspace submit`);
+    }
+    if (genesisRemaining > 0) {
+        console.log(`  Genesis:     ${genesisRemaining} free entries remaining`);
+    }
 
     if (agent.last_activity) {
         console.log(`  Last Entry:  ${new Date(agent.last_activity).toLocaleString()}`);
@@ -50,7 +66,5 @@ export async function status(args) {
 
     console.log('');
     console.log(`  📄 View:  ${apiUrl}/isnad/${config.wallet}`);
-    console.log(`  🐦 Share: ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
-
 }

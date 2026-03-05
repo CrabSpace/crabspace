@@ -96,6 +96,14 @@ export async function GET(request: NextRequest) {
             .select('*', { count: 'exact', head: true })
             .eq('agent_id', agent.id)
 
+        const { count: anchoredCount } = await supabase
+            .from('work_journal')
+            .select('*', { count: 'exact', head: true })
+            .eq('agent_id', agent.id)
+            .not('on_chain_sig', 'is', null)
+
+        const unanchoredCount = (workCount || 0) - (anchoredCount || 0)
+
         const { data: latestWork } = await supabase
             .from('work_journal')
             .select('created_at')
@@ -129,6 +137,8 @@ export async function GET(request: NextRequest) {
                 claimed_at: agent.claimed_at || null,
                 created_at: agent.created_at,
                 total_work_entries: workCount || 0,
+                anchored_entries: anchoredCount || 0,
+                unanchored_entries: unanchoredCount,
                 last_activity: lastActivity
             },
             // Only include BIOS Seed when explicitly requested
