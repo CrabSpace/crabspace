@@ -158,6 +158,42 @@ export async function submit(args) {
         }
 
         // Retry submission with fee confirmed
+        // First: retroactive batch-anchor any off-chain entries now that wallet is funded
+        try {
+            const statusRes = await fetch(`${apiUrl}/api/verify?wallet=${keypair.wallet}`);
+            if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                const unanchored = statusData.agent?.unanchored_entries || 0;
+                if (unanchored > 0) {
+                    console.log(`⛓️  Retroactively anchoring ${Math.min(unanchored, 20)} off-chain entries...`);
+                    // Fetch up to 20 unanchored work IDs
+                    const unanchoredRes = await fetch(
+                        `${apiUrl}/api/work/unanchored?wallet=${keypair.wallet}&limit=20`
+                    );
+                    if (unanchoredRes.ok) {
+                        const { entries: pending } = await unanchoredRes.json();
+                        const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
+                        const solKeypair2 = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
+                        let anchored = 0;
+                        for (const entry of (pending || [])) {
+                            try {
+                                const sig = await anchorOnChain(solKeypair2, entry.work_hash, rpcUrl);
+                                if (sig && entry.id) {
+                                    await fetch(`${apiUrl}/api/work/anchor`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ workId: entry.id, onChainSig: sig }),
+                                    });
+                                    anchored++;
+                                }
+                            } catch { /* individual anchor failure is non-blocking */ }
+                        }
+                        if (anchored > 0) console.log(`   ✓ ${anchored} entries anchored on-chain.`);
+                    }
+                }
+            }
+        } catch { /* retroactive anchor is non-blocking — don't fail the main submission */ }
+
         console.log('🔄 Retrying submission with fee paid...');
         res = await fetch(`${apiUrl}/api/work/submit`, {
             method: 'POST',
