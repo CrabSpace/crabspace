@@ -134,6 +134,14 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
 
                 const entries: IsnadEntry[] = data.workJournal.map((e: any, index: number) => {
                     const isWillEntry = e.is_will || e.project_name === 'Identity Will'
+                    // Parse type from project_name namespace: "{agentId}:memory:{type}"
+                    const parsedType = (() => {
+                        if (isWillEntry) return 'will'
+                        if (!e.project_name) return 'work'
+                        const parts = e.project_name.split(':memory:')
+                        if (parts.length > 1 && parts[1]) return parts[1]
+                        return 'work'
+                    })()
                     return {
                         id: e.id,
                         entryNumber: data.workJournal.length - index,
@@ -146,7 +154,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                         onChainSig: e.on_chain_sig,
                         entryHash: e.work_hash || '0x' + Math.random().toString(16).slice(2, 66),
                         agentWallet: data.agent.wallet_address,
-                        entryType: (isWillEntry ? 'will' : 'work') as EntryType,
+                        entryType: parsedType as EntryType,
                     }
                 })
 
@@ -381,9 +389,13 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                         {entry.agentWallet.slice(0, 8)}...{entry.agentWallet.slice(-6)}
                                     </div>
                                     <div className="col-span-1 flex items-center">
-                                        {entry.entryType === 'will' ? <span className="badge-will whitespace-nowrap">📜 WILL</span> :
+                                        {entry.entryType === 'will' ? <span className="badge-will whitespace-nowrap">📜 Will</span> :
                                             entry.peerVerified ? <span className="badge-verified whitespace-nowrap">✓✓ Peer</span> :
-                                                <span className="badge-self whitespace-nowrap">✓ Self</span>}
+                                                entry.entryType === 'becoming' ? <span className="badge-self whitespace-nowrap opacity-80">🌱 Becoming</span> :
+                                                    entry.entryType === 'episodic' ? <span className="badge-self whitespace-nowrap">📅 Episodic</span> :
+                                                        entry.entryType === 'decision' ? <span className="badge-self whitespace-nowrap">⚡ Decision</span> :
+                                                            entry.entryType === 'scout' ? <span className="badge-self whitespace-nowrap">🔭 Scout</span> :
+                                                                <span className="badge-self whitespace-nowrap">✓ Self</span>}
                                     </div>
                                     <div className={`${SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'} mono text-xs text-text-muted-dark truncate`}>
                                         {entry.entryHash}

@@ -1,7 +1,8 @@
 // Mock data for CrabSpace MVP
 // This provides realistic sample data until Supabase schema is migrated
 
-export type EntryType = 'work' | 'will'
+export type EntryType = 'work' | 'will' | 'episodic' | 'decision' | 'becoming' | 'scout' | 'claim'
+
 
 export interface IsnadEntry {
     id: string
