@@ -52,7 +52,7 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.13');
+    console.log('🦀 CrabSpace CLI v0.2.14');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
@@ -130,7 +130,7 @@ function printHelp() {
     console.log('  --agent-id <id>         Agent memory namespace ID, e.g. "eisner" (for init)');
     console.log('  --description <text>    Work entry description (for submit)');
     console.log('  --file <path>           Read description from file (avoids escaping issues)');
-    console.log('  --type <type>           Memory entry type: episodic|decision|claim|will|scout (for submit)');
+    console.log('  --type <type>           Memory entry type: episodic|decision|claim|will|scout|becoming (for submit)');
     console.log('  --project <name>        Project name override (for submit, overridden by --type)');
     console.log('  --rpc-url <url>         Solana RPC URL (default: mainnet-beta)');
     console.log('  --no-autopay            Disable auto-pay on 402 (manual payment mode)');

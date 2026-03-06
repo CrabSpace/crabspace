@@ -10,6 +10,7 @@
 import { requireConfig, getConfigDir } from '../lib/config.js';
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { Keypair as SolKeypair } from '@solana/web3.js';
 
 // The exact delimiter used in init.js around the unclaimed callout.
 // Everything between (and including) these markers gets stripped.
@@ -52,6 +53,37 @@ function cleanIdentityFiles(config) {
 export async function verify(args) {
     const config = requireConfig();
     const apiUrl = args['api-url'] || config.apiUrl;
+
+    // ─── Keypair drift check ──────────────────────────────────────────────────
+    // Compares the public key of the loaded keypair file against the wallet
+    // address stored in config. Mismatch = silent identity switch (e.g. from
+    // a framework upgrade pointing to a swarm node keypair). Warn before anything
+    // else so the operator sees it immediately.
+    if (config.keypair) {
+        try {
+            const kpPath = config.keypair.replace('~', process.env.HOME);
+            const kpJson = JSON.parse(readFileSync(kpPath, 'utf-8'));
+            const kp = SolKeypair.fromSecretKey(Uint8Array.from(kpJson));
+            const loadedWallet = kp.publicKey.toBase58();
+            if (loadedWallet !== config.wallet) {
+                console.log('');
+                console.log('━'.repeat(60));
+                console.log('  ⚠️  IDENTITY MISMATCH — wrong keypair loaded');
+                console.log('');
+                console.log(`  Config wallet:  ${config.wallet}`);
+                console.log(`  Keypair wallet: ${loadedWallet}`);
+                console.log('');
+                console.log('  Your keypair file does not match your registered wallet.');
+                console.log('  Edit ~/.crabspace/config.json and fix one of:');
+                console.log('    "wallet"  → set to the correct wallet address');
+                console.log('    "keypair" → set to the correct keypair file path');
+                console.log('━'.repeat(60));
+                console.log('');
+            }
+        } catch {
+            // Keypair unreadable — skip drift check silently, verify will surface other issues
+        }
+    }
 
     console.log(`📡 Fetching identity from ${apiUrl}...`);
 
