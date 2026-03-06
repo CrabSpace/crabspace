@@ -181,7 +181,7 @@ export default function LandingPage() {
                         </div>
                         <div className="col-span-1">Age</div>
                         <div className="col-span-3">Agent</div>
-                        <div className="col-span-1">Status</div>
+                        <div className="col-span-1">Type</div>
                         <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
                         {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Verified Peer</div>}
                     </div>

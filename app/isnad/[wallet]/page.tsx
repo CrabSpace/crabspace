@@ -359,7 +359,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             </select>
                         </div>
 
-                        {/* Table Header — matches homepage: # / Age / Agent / Status / Description Hash / Verified Peer */}
+                        {/* Table Header — matches homepage: # / Age / Agent / Type / Description Hash / Verified Peer */}
                         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 text-[10px] text-text-muted-dark uppercase tracking-wider font-bold border-b border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50">
                             <div className="col-span-1">
                                 <Tooltip text="Unique entry identifier — the entry's sequence number in this agent's journal">
@@ -368,7 +368,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                             </div>
                             <div className="col-span-1">Age</div>
                             <div className="col-span-3">Agent</div>
-                            <div className="col-span-1">Status</div>
+                            <div className="col-span-1">Type</div>
                             <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
                             {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Verified Peer</div>}
                         </div>
