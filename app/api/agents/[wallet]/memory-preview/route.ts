@@ -54,6 +54,18 @@ export async function GET(
         // Enforce self floor
         counts['self'] = Math.max(1, counts['self'] ?? DEFAULT_COUNTS['self'])
 
+        // ── DIAGNOSTIC: fetch real project_names to see what's in the DB ──
+        const { data: sampleEntries, error: sampleErr } = await supabaseAdmin
+            .from('work_journal')
+            .select('id, project_name, is_will')
+            .eq('agent_id', agent.id)
+            .order('created_at', { ascending: false })
+            .limit(50)
+
+        if (sampleErr) console.error('[memory-preview] sample query error:', sampleErr.message)
+
+        const diagnosticProjectNames = [...new Set((sampleEntries || []).map(e => e.project_name))]
+
         // Fetch entries per type
         const types = ['episodic', 'decision', 'becoming', 'scout', 'self']
         const allEntries: any[] = []
@@ -142,7 +154,9 @@ export async function GET(
             entries: sorted,
             total_count: totalCount,
             large_context_warning: isLargeContext,
-            counts_used: counts
+            counts_used: counts,
+            _debug_project_names: diagnosticProjectNames,
+            _debug_agent_id: agent.id
         })
     } catch (err: any) {
         console.error('[memory-preview GET]', err)
