@@ -135,6 +135,7 @@ function printHelp() {
     console.log('  --rpc-url <url>         Solana RPC URL (default: mainnet-beta)');
     console.log('  --no-autopay            Disable auto-pay on 402 (manual payment mode)');
     console.log('  --wallet-only           Skip verification (for bootstrap)');
+    console.log('  --recent [N]            Decrypt and print last N entries at boot (default: 7). Use with verify.');
     console.log('');
 }
 
