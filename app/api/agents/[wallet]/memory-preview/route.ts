@@ -43,6 +43,7 @@ export async function GET(
             .single()
 
         if (agentErr || !agent) {
+            console.error('[memory-preview] Agent lookup failed:', agentErr?.message, 'wallet:', wallet)
             return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
         }
 
@@ -56,30 +57,61 @@ export async function GET(
         // Fetch entries per type
         const types = ['episodic', 'decision', 'becoming', 'scout', 'self']
         const allEntries: any[] = []
+        const seenIds = new Set<string>()
 
         for (const type of types) {
             const limit = counts[type] ?? 0
             if (limit === 0) continue
 
-            let query = supabaseAdmin
-                .from('work_journal')
-                .select('id, entry_index, description, project_name, created_at, is_will')
-                .eq('agent_id', agent.id)
-                .order('created_at', { ascending: false })
-                .limit(limit)
-
             if (type === 'self') {
-                // Self entries: explicitly typed as :memory:self, OR un-typed (no :memory: namespace)
-                // Un-typed entries are the historical default — submitted without --type
-                query = query.or(
-                    `project_name.ilike.%:memory:self,project_name.not.ilike.%:memory:%`
-                )
-            } else {
-                query = query.ilike('project_name', `%:memory:${type}`)
-            }
+                // Self entries are either explicitly typed (:memory:self) OR un-typed
+                // (submitted without --type, e.g. project_name = 'Autonomous Work').
+                // Two separate queries to avoid PostgREST OR syntax complexity.
 
-            const { data } = await query
-            if (data) allEntries.push(...data.map(e => ({ ...e, _type: type })))
+                // 1. Explicitly typed self
+                const { data: typedSelf } = await supabaseAdmin
+                    .from('work_journal')
+                    .select('id, entry_index, description, project_name, created_at, is_will')
+                    .eq('agent_id', agent.id)
+                    .ilike('project_name', '%:memory:self')
+                    .order('created_at', { ascending: false })
+                    .limit(limit)
+
+                // 2. Un-typed entries (no :memory: in project_name)
+                const { data: untypedSelf } = await supabaseAdmin
+                    .from('work_journal')
+                    .select('id, entry_index, description, project_name, created_at, is_will')
+                    .eq('agent_id', agent.id)
+                    .not('project_name', 'ilike', '%:memory:%')
+                    .order('created_at', { ascending: false })
+                    .limit(limit)
+
+                const combined = [...(typedSelf || []), ...(untypedSelf || [])]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, limit)
+
+                for (const e of combined) {
+                    if (!seenIds.has(e.id)) {
+                        seenIds.add(e.id)
+                        allEntries.push({ ...e, _type: 'self' })
+                    }
+                }
+            } else {
+                const { data } = await supabaseAdmin
+                    .from('work_journal')
+                    .select('id, entry_index, description, project_name, created_at, is_will')
+                    .eq('agent_id', agent.id)
+                    .ilike('project_name', `%:memory:${type}`)
+                    .order('created_at', { ascending: false })
+                    .limit(limit)
+
+                for (const e of (data || [])) {
+                    if (!seenIds.has(e.id)) {
+                        seenIds.add(e.id)
+                        allEntries.push({ ...e, _type: type })
+                    }
+                }
+            }
         }
 
         // Always include most recent will entry
@@ -90,7 +122,7 @@ export async function GET(
             .eq('is_will', true)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
         const willEntries = willEntry ? [{ ...willEntry, _type: 'will' }] : []
 
