@@ -48,6 +48,13 @@ export default function AccountPage() {
     const [emailSaving, setEmailSaving] = useState(false)
     const [emailMsg, setEmailMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
+    const DEFAULT_MEMORY_COUNTS = { episodic: 5, decision: 5, becoming: 5, scout: 5, self: 3 }
+    const [memoryCounts, setMemoryCounts] = useState(DEFAULT_MEMORY_COUNTS)
+    const [memorySaving, setMemorySaving] = useState(false)
+    const [memoryMsg, setMemoryMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+    const [memoryPreview, setMemoryPreview] = useState<any[] | null>(null)
+    const [memoryPreviewLoading, setMemoryPreviewLoading] = useState(false)
+
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
     useEffect(() => {
@@ -86,6 +93,18 @@ export default function AccountPage() {
             } catch { }
         }
         fetchMyAgents()
+
+        // Fetch existing memory config
+        const fetchMemoryConfig = async () => {
+            try {
+                const res = await fetch(`/api/agents/${activeWallet}/memory-config`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.recent_counts) setMemoryCounts({ ...DEFAULT_MEMORY_COUNTS, ...data.recent_counts })
+                }
+            } catch { }
+        }
+        fetchMemoryConfig()
     }, [isConnected, activeWallet])
 
     const handleCopy = (text: string, label: string) => {
@@ -99,7 +118,6 @@ export default function AccountPage() {
         setEmailSaving(true)
         setEmailMsg(null)
         try {
-            // Re-use the claim email endpoint with action=update
             const res = await fetch('/api/claim/email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -117,6 +135,50 @@ export default function AccountPage() {
         } finally {
             setEmailSaving(false)
         }
+    }
+
+    const handleSaveMemoryConfig = async () => {
+        if (memorySaving) return
+        setMemorySaving(true)
+        setMemoryMsg(null)
+        try {
+            const res = await fetch(`/api/agents/${activeWallet}/memory-config`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ recent_counts: memoryCounts })
+            })
+            const data = await res.json()
+            if (res.ok) {
+                setMemoryMsg({ type: 'ok', text: 'Memory tuning saved.' })
+                if (data.recent_counts) setMemoryCounts({ ...DEFAULT_MEMORY_COUNTS, ...data.recent_counts })
+            } else {
+                setMemoryMsg({ type: 'err', text: data.error || 'Failed to save.' })
+            }
+        } catch {
+            setMemoryMsg({ type: 'err', text: 'Network error. Please try again.' })
+        } finally {
+            setMemorySaving(false)
+        }
+    }
+
+    const handleRevertMemory = () => {
+        setMemoryCounts(DEFAULT_MEMORY_COUNTS)
+        setMemoryMsg({ type: 'ok', text: 'Reset to neutral — save to apply.' })
+    }
+
+    const handlePreviewMemory = async () => {
+        setMemoryPreviewLoading(true)
+        setMemoryPreview(null)
+        try {
+            const params = new URLSearchParams()
+            Object.entries(memoryCounts).forEach(([k, v]) => params.set(k, String(v)))
+            const res = await fetch(`/api/agents/${activeWallet}/memory-preview?${params}`)
+            if (res.ok) {
+                const data = await res.json()
+                setMemoryPreview(data.entries || [])
+            }
+        } catch { }
+        finally { setMemoryPreviewLoading(false) }
     }
 
     const handleDownloadSeed = () => {
@@ -567,6 +629,131 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                 </div>
                             </div>
                         )}
+
+
+                        {/* ─── MEMORY TUNING ─── */}
+                        <div className="card p-6">
+                            <div className="flex items-center gap-3 mb-1">
+                                <span className="text-2xl">🧠</span>
+                                <div>
+                                    <h3 className="font-bold text-white">Memory Tuning</h3>
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Boot context emphasis</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-slate-400 leading-relaxed mb-5">
+                                Shape which memory types your agent loads at boot via{' '}
+                                <code className="text-primary">crabspace verify --recent</code>.
+                                This is a <strong className="text-white">nudge, not a filter</strong> — your agent retains
+                                access to all entry types at all times.
+                            </p>
+
+                            <div className="space-y-4 mb-5">
+                                {(['episodic', 'decision', 'becoming', 'scout'] as const).map(type => (
+                                    <div key={type} className="flex items-center gap-4">
+                                        <span className="w-20 text-xs font-medium capitalize text-slate-300">{type}</span>
+                                        <input
+                                            type="range" min={0} max={20} step={1}
+                                            value={memoryCounts[type]}
+                                            onChange={e => setMemoryCounts(prev => ({ ...prev, [type]: parseInt(e.target.value) }))}
+                                            className="flex-1 h-1.5 rounded-full accent-primary cursor-pointer"
+                                        />
+                                        <span className="w-6 text-right text-xs font-mono text-slate-400">{memoryCounts[type]}</span>
+                                    </div>
+                                ))}
+
+                                {/* Self — floor protected */}
+                                <div className="flex items-center gap-4">
+                                    <span className="w-20 text-xs font-medium text-blue-400 flex items-center gap-1">
+                                        🔒 Self
+                                    </span>
+                                    <input
+                                        type="range" min={1} max={20} step={1}
+                                        value={memoryCounts.self}
+                                        onChange={e => setMemoryCounts(prev => ({ ...prev, self: Math.max(1, parseInt(e.target.value)) }))}
+                                        className="flex-1 h-1.5 rounded-full accent-blue-400 cursor-pointer"
+                                    />
+                                    <span className="w-6 text-right text-xs font-mono text-slate-400">{memoryCounts.self}</span>
+                                </div>
+
+                                {/* Will — always included, not adjustable */}
+                                <div className="flex items-center gap-4 opacity-50 pointer-events-none">
+                                    <span className="w-20 text-xs font-medium text-amber-400 flex items-center gap-1">🔒 Will</span>
+                                    <div className="flex-1 h-1.5 rounded-full bg-amber-400/20" />
+                                    <span className="w-16 text-right text-[10px] text-amber-400/60">always</span>
+                                </div>
+                            </div>
+
+                            {/* Explainers */}
+                            <div className="space-y-2 mb-5">
+                                <p className="text-[10px] text-slate-500 leading-relaxed">
+                                    🔒 <strong className="text-blue-400">Self</strong> entries are identity anchors — reducing them too far risks value drift. Your agent may lose touch with its own stated boundaries. Minimum: 1.
+                                </p>
+                                <p className="text-[10px] text-slate-500 leading-relaxed">
+                                    🔒 <strong className="text-amber-400">Will</strong> is your succession document. Always shown first at boot, not configurable.
+                                </p>
+                                {Object.values(memoryCounts).reduce((a, b) => a + b, 0) > 25 && (
+                                    <p className="text-[10px] text-amber-500 leading-relaxed">
+                                        ⚠ Boot context is large — consider reducing counts for faster orientation.
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Preview modal */}
+                            {memoryPreview !== null && (
+                                <div className="mb-5 bg-slate-900 border border-border-dark rounded-lg p-4 max-h-72 overflow-y-auto">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preview — {memoryPreview.length} entries would load</p>
+                                        <button onClick={() => setMemoryPreview(null)} className="text-[10px] text-slate-500 hover:text-white">✕ Close</button>
+                                    </div>
+                                    {memoryPreview.length === 0 ? (
+                                        <p className="text-xs text-slate-500">No entries found with current weights.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {memoryPreview.map((entry: any, i: number) => (
+                                                <div key={i} className="border-b border-border-dark/50 pb-2 last:border-0 last:pb-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-[10px] font-mono text-slate-500">#{entry.entry_index ?? entry.id}</span>
+                                                        <span className="text-[10px] font-bold text-slate-300 capitalize">{entry._type}</span>
+                                                        <span className="text-[10px] text-slate-600">{new Date(entry.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-500 italic">[encrypted — view after boot with `crabspace verify --recent`]</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Controls */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <button
+                                    onClick={handlePreviewMemory}
+                                    disabled={memoryPreviewLoading}
+                                    className="btn-secondary py-2 px-4 text-[10px] font-bold uppercase tracking-wider disabled:opacity-40"
+                                >
+                                    {memoryPreviewLoading ? 'Loading...' : '👁 Preview Boot Context'}
+                                </button>
+                                <button
+                                    onClick={handleSaveMemoryConfig}
+                                    disabled={memorySaving}
+                                    className="bg-primary hover:bg-primary/80 text-black text-[10px] font-black uppercase px-4 py-2 rounded-lg transition-colors disabled:opacity-40"
+                                >
+                                    {memorySaving ? 'Saving...' : 'Save Settings'}
+                                </button>
+                                <button
+                                    onClick={handleRevertMemory}
+                                    className="text-[10px] text-slate-400 hover:text-white transition-colors"
+                                >
+                                    ↺ Revert to Neutral
+                                </button>
+                            </div>
+
+                            {memoryMsg && (
+                                <p className={`text-xs mt-3 ${memoryMsg.type === 'ok' ? 'text-accent-green' : 'text-red-400'}`}>
+                                    {memoryMsg.text}
+                                </p>
+                            )}
+                        </div>
 
 
                         {/* ─── CHANGE EMAIL ─── */}

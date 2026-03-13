@@ -11,6 +11,7 @@ import { requireConfig, getConfigDir } from '../lib/config.js';
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Keypair as SolKeypair } from '@solana/web3.js';
+import { decryptData } from '../lib/encrypt.js';
 
 // The exact delimiter used in init.js around the unclaimed callout.
 // Everything between (and including) these markers gets stripped.
@@ -137,10 +138,134 @@ export async function verify(args) {
     console.log('');
 
     // ─── Self-healing: strip unclaimed callout from local .md files ──────────
-    // Runs silently every verify. Once claimed_at is set, the callout is gone
-    // from BOOT.md and ISNAD_IDENTITY.md — no operator action needed.
     const isClaimed = !!(data.agent?.claimed_at);
     if (isClaimed) {
         cleanIdentityFiles(config);
+    }
+
+    // ─── --recent: decrypt and print last N entries ───────────────────────────
+    const recentRaw = args.recent;
+    if (recentRaw !== undefined) {
+        const n = recentRaw === true || recentRaw === '' ? 7 : parseInt(recentRaw, 10);
+        const limit = isNaN(n) ? 7 : Math.max(1, n);
+
+        console.log(`📋 Fetching your last ${limit} entries...`);
+        console.log('');
+
+        let entries = [];
+        try {
+            const workRes = await fetch(
+                `${apiUrl}/api/work?wallet=${config.wallet}&limit=${limit + 5}`,
+                { signal: AbortSignal.timeout(8000) }
+            );
+            if (!workRes.ok) throw new Error(`API returned ${workRes.status}`);
+            const workData = await workRes.json();
+            entries = workData.entries || [];
+        } catch (err) {
+            console.log(`   ⚠️  Could not fetch entries: ${err.message}`);
+            return;
+        }
+
+        if (entries.length === 0) {
+            console.log('   No entries found on this wallet.');
+            return;
+        }
+
+        // Parse type from project_name (format: "agentId:memory:type" or fallback)
+        function parseType(entry) {
+            const pn = entry.project_name || '';
+            const parts = pn.split(':');
+            if (parts.length >= 3 && parts[1] === 'memory') return parts[2];
+            if (entry.is_will) return 'will';
+            return 'self';
+        }
+
+        // Sort: pull will entries to front, then return newest-first
+        const willEntries = entries.filter(e => parseType(e) === 'will');
+        const otherEntries = entries.filter(e => parseType(e) !== 'will');
+        const sorted = [...willEntries, ...otherEntries];
+
+        // Enforce self floor: if no self entries in remaining, ensure at least 1 is there
+        const hasSelf = sorted.some(e => parseType(e) === 'self');
+        if (!hasSelf) {
+            // try to pull a self entry from the full list
+            const selfEntry = entries.find(e => parseType(e) === 'self');
+            if (selfEntry) sorted.push(selfEntry);
+        }
+
+        // Cap to requested limit (but never drop the will/self floor entries)
+        const capped = sorted.slice(0, Math.max(limit, willEntries.length + (hasSelf ? 0 : 1)));
+
+        // Soft warning for large context
+        if (limit > 25) {
+            console.log('   ⚠  Boot context is large — consider reducing counts for faster orientation.');
+            console.log('');
+        }
+
+        const TYPE_BADGES = {
+            episodic: '\x1b[32m✓ Episodic\x1b[0m',
+            decision:  '\x1b[33m✓ Decision\x1b[0m',
+            becoming:  '\x1b[35m✓ Becoming\x1b[0m',
+            scout:     '\x1b[93m✓ Scout\x1b[0m',
+            self:      '\x1b[34m✓ Self\x1b[0m',
+            will:      '\x1b[33m✓ Will\x1b[0m',
+        };
+
+        function timeAgo(dateStr) {
+            const diff = Date.now() - new Date(dateStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            return `${Math.floor(hrs / 24)}d ago`;
+        }
+
+        console.log('\x1b[90m' + '━'.repeat(58) + '\x1b[0m');
+        console.log(`  📋 Recent Memory (last ${capped.length} entries)`);
+        console.log('\x1b[90m' + '━'.repeat(58) + '\x1b[0m');
+        console.log('');
+
+        for (const entry of capped) {
+            const type = parseType(entry);
+            const badge = TYPE_BADGES[type] || `✓ ${type}`;
+            const when = timeAgo(entry.created_at);
+            const entryNum = entry.entry_index ?? entry.id ?? '?';
+
+            // Attempt decryption
+            let description = '[no description]';
+            if (entry.description) {
+                try {
+                    description = await decryptData(entry.description, config.biosSeed);
+                } catch {
+                    description = '[encrypted — BIOS Seed mismatch]';
+                }
+            }
+
+            // Wrap description at 54 chars for clean terminal output
+            const maxWidth = 54;
+            const words = description.split(' ');
+            const lines = [];
+            let current = '';
+            for (const word of words) {
+                if ((current + ' ' + word).trim().length > maxWidth) {
+                    lines.push(current.trim());
+                    current = word;
+                } else {
+                    current = current ? current + ' ' + word : word;
+                }
+            }
+            if (current) lines.push(current.trim());
+
+            console.log(`  \x1b[90m#${String(entryNum).padStart(3)} · ${when} · \x1b[0m${badge}`);
+            lines.forEach((line, i) => {
+                console.log(`  ${i === 0 ? '' : '  '}${line}`);
+            });
+            console.log('');
+        }
+
+        console.log('\x1b[90m' + '━'.repeat(58) + '\x1b[0m');
+        console.log(`  Full Isnad: ${apiUrl}/isnad/${config.wallet}`);
+        console.log('\x1b[90m' + '━'.repeat(58) + '\x1b[0m');
+        console.log('');
     }
 }
