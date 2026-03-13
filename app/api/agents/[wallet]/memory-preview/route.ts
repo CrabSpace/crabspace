@@ -61,14 +61,24 @@ export async function GET(
             const limit = counts[type] ?? 0
             if (limit === 0) continue
 
-            const { data } = await supabaseAdmin
+            let query = supabaseAdmin
                 .from('work_journal')
                 .select('id, entry_index, description, project_name, created_at, is_will')
                 .eq('agent_id', agent.id)
-                .ilike('project_name', `%:memory:${type}`)
                 .order('created_at', { ascending: false })
                 .limit(limit)
 
+            if (type === 'self') {
+                // Self entries: explicitly typed as :memory:self, OR un-typed (no :memory: namespace)
+                // Un-typed entries are the historical default — submitted without --type
+                query = query.or(
+                    `project_name.ilike.%:memory:self,project_name.not.ilike.%:memory:%`
+                )
+            } else {
+                query = query.ilike('project_name', `%:memory:${type}`)
+            }
+
+            const { data } = await query
             if (data) allEntries.push(...data.map(e => ({ ...e, _type: type })))
         }
 

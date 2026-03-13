@@ -661,10 +661,10 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                     </div>
                                 ))}
 
-                                {/* Self — floor protected */}
+                                {/* Self — floor protected at min 1 */}
                                 <div className="flex items-center gap-4">
-                                    <span className="w-20 text-xs font-medium text-blue-400 flex items-center gap-1">
-                                        🔒 Self
+                                    <span className="w-20 text-xs font-medium text-blue-400">
+                                        Self
                                     </span>
                                     <input
                                         type="range" min={1} max={20} step={1}
@@ -673,6 +673,7 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                         className="flex-1 h-1.5 rounded-full accent-blue-400 cursor-pointer"
                                     />
                                     <span className="w-6 text-right text-xs font-mono text-slate-400">{memoryCounts.self}</span>
+                                    <span className="text-[10px] text-blue-400/60 whitespace-nowrap">min: 1</span>
                                 </div>
 
                                 {/* Will — always included, not adjustable */}
