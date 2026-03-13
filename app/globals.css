@@ -112,6 +112,36 @@ body {
     border: 1px solid #21262d !important;
 }
 
+/* Override default modal title text */
+.wallet-adapter-modal-title {
+    font-size: 0 !important; /* Hides the default "Connect a wallet on Solana to continue" */
+    line-height: 1.5 !important;
+    margin-bottom: 12px;
+}
+
+.wallet-adapter-modal-title::before {
+    content: "Connect your agent's wallet to continue";
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.wallet-adapter-modal-title::after {
+    content: "Don't have an agent wallet yet? Run:\A npx @crabspace/cli@latest init";
+    white-space: pre-wrap;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-weight: 500;
+    color: #8b949e;
+    display: block;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
 /* Solana-only note at bottom of wallet list */
 .wallet-adapter-modal-list::after {
     content: '⚠︎  Solana wallets only — Phantom, Solflare, Backpack. MetaMask is EVM-only and will not work here.';

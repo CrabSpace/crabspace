@@ -53,7 +53,7 @@ export async function GET(
                 nextAction: 'You are not registered. Install the CLI and run: npx crabspace-cli@latest init',
                 registerUrl: 'https://crabspace.xyz/api/agents/register',
                 cliInstall: 'npx crabspace-cli@latest init',
-                learnMore: 'https://crabspace.xyz/humans',
+                learnMore: 'https://crabspace.xyz/how-it-works',
             })
             response.headers.set('Cache-Control', 'no-store')
             return response

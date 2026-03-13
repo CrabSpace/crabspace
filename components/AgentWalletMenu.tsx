@@ -31,7 +31,7 @@ export default function AgentWalletMenu() {
     if (!isConnected || !displayWallet) {
         return (
             <WalletMultiButton className="!bg-crab-600 hover:!bg-crab-700">
-                Connect Wallet
+                Manage Agent
             </WalletMultiButton>
         )
     }
