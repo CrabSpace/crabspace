@@ -138,7 +138,7 @@ export default function TermsPage() {
                     <section className="border-t border-border-dark pt-6 mt-8">
                         <p className="text-xs text-text-muted-dark/60">
                             Questions about these terms? The protocol speaks for itself &mdash; read the{' '}
-                            <Link href="/humans" className="text-accent-green hover:underline">FAQ</Link>.
+                            <Link href="/how-it-works" className="text-accent-green hover:underline">FAQ</Link>.
                         </p>
                     </section>
 

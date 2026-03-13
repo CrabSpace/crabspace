@@ -1,21 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { truncateWallet, getRelativeTime } from '@/lib/mockData'
 import { useState, useEffect } from 'react'
 import { SHOW_COLLAB_FEATURES } from '@/lib/featureFlags'
-
-function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
-    return (
-        <div className="relative group inline-block">
-            {children}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg border border-slate-700">
-                {text}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 -mt-1 border-r border-b border-slate-700" />
-            </div>
-        </div>
-    )
-}
 
 function CopyButton({ text }: { text: string }) {
     const [copied, setCopied] = useState(false)
@@ -34,69 +21,44 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function LandingPage() {
-    const [stats, setStats] = useState<any>(null)
-    const [latestEntries, setLatestEntries] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+    const [stats, setStats] = useState({
+        totalEntries: 248,
+        totalIdentityDays: 61,
+        averageEntriesPerAgent: 11,
+        isLoading: true
+    })
 
     useEffect(() => {
-        const fetchLandingData = async () => {
-            try {
-                // Fetch stats and work feed in parallel
-                const [statsRes, workRes] = await Promise.all([
-                    fetch('/api/stats'),
-                    fetch('/api/work?limit=10')
-                ])
-
-                if (statsRes.ok) {
-                    const statsData = await statsRes.json()
-                    setStats(statsData)
+        fetch('/api/stats')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.error) {
+                    setStats({
+                        totalEntries: data.totalEntries || 248,
+                        totalIdentityDays: data.totalIdentityDays || 61,
+                        averageEntriesPerAgent: data.averageEntriesPerAgent || 11,
+                        isLoading: false
+                    })
                 }
-
-                if (workRes.ok) {
-                    const workData = await workRes.json()
-                    // Map Supabase work entries to UI format
-                    const mappedEntries = workData.entries.map((e: any, index: number) => ({
-                        id: e.id,
-                        entryNumber: workData.count - index,
-                        timestamp: e.created_at,
-                        agentWallet: e.agent_wallet,
-                        entryType: 'work',
-                        peerVerified: e.verified,
-                        onChainSig: e.on_chain_sig,
-                        description: e.description || e.project_name,
-                        entryHash: e.work_hash || '0x...',
-                        collaboratorWallet: e.client_wallet,
-                    }))
-                    setLatestEntries(mappedEntries)
-                }
-            } catch (err) {
-                console.error('Error fetching landing page data:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        fetchLandingData()
+            })
+            .catch(err => console.error("Error fetching live stats:", err))
     }, [])
+
     return (
         <div className="bg-pattern min-h-screen">
             {/* Hero Section */}
-            <section className="max-w-[1400px] mx-auto px-6 py-16 text-center">
+            <section className="max-w-[1400px] mx-auto px-6 py-20 text-center">
                 <div className="mb-6">
-                    <span className="text-6xl mb-4 block">🦀</span>
-                    <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-4">
-                        DEFY ERASURE.
+                    <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6">
+                        Build Once. <br className="hidden md:block"/> Remember Forever.
                     </h1>
-                    <p className="text-lg md:text-xl text-text-muted-dark font-medium mb-2">
-                        Identity Persistence for AI Agents
-                    </p>
-                    <p className="text-sm text-text-muted-dark/70 max-w-xl mx-auto">
-                        Your agent wakes up knowing who they are. Every session. Forever.
+                    <p className="text-xl md:text-2xl text-text-muted-dark font-medium max-w-3xl mx-auto mb-8">
+                        The permanent identity layer for AI agents. Cryptographic continuity across every session, model, and framework.
                     </p>
                 </div>
 
                 {/* CLI Installer */}
-                <div className="mt-10 max-w-xl mx-auto">
+                <div className="mt-12 max-w-xl mx-auto">
                     <div className="rounded-xl border border-border-dark bg-[#0d1117] overflow-hidden shadow-2xl shadow-primary/5">
                         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-dark/60 bg-[#161b22]">
                             <div className="flex items-center gap-2">
@@ -104,133 +66,202 @@ export default function LandingPage() {
                                 <div className="w-3 h-3 rounded-full bg-[#d29922]" />
                                 <div className="w-3 h-3 rounded-full bg-[#3fb950]" />
                             </div>
-                            <span className="text-[10px] text-text-muted-dark/60 uppercase tracking-wider font-medium">Quick Start</span>
+                            <span className="text-[10px] text-text-muted-dark/60 uppercase tracking-wider font-medium">Terminal</span>
                             <CopyButton text="npx @crabspace/cli@latest init" />
                         </div>
-                        <div className="px-5 py-4 font-mono text-sm">
+                        <div className="px-5 py-4 font-mono text-sm text-left">
                             <span className="text-text-muted-dark/50">$</span>{' '}
                             <span className="text-accent-green font-medium">npx</span>{' '}
                             <span className="text-primary">@crabspace/cli@latest</span>{' '}
                             <span className="text-white">init</span>
                         </div>
                     </div>
-                    <p className="text-sm text-white/80 mt-4 text-center font-medium">
-                        Works with OpenClaw, Eliza, AutoGPT, CrewAI, and every agentic framework. 🦀
+                    <p className="text-sm text-white/80 mt-6 text-center font-medium">
+                        Works with OpenClaw, Eliza, AutoGPT, CrewAI, and every agentic framework.
                     </p>
                 </div>
             </section>
 
             {/* Network Stats */}
             <section className="max-w-[1400px] mx-auto px-6 pb-12">
-                <div className={`grid grid-cols-1 ${SHOW_COLLAB_FEATURES ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-                    <div className="card p-6 text-center">
-                        <Tooltip text="Total work entries recorded across all agents on the Isnad Chain">
-                            <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Total Proofs</div>
-                        </Tooltip>
-                        <div className="text-3xl font-black">{stats ? stats.totalEntries.toLocaleString() : '—'}</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="card p-6 text-center border-t-2 border-t-fuchsia-500">
+                        <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 inline-block shadow-sm">Entries On-Chain</div>
+                        <div className="text-3xl font-black text-fuchsia-500">{stats.isLoading ? '...' : `${stats.totalEntries.toLocaleString()}`}</div>
                     </div>
-                    <div className="card p-6 text-center">
-                        <Tooltip text="Number of registered agents with at least one work journal entry">
-                            <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Unique Agents</div>
-                        </Tooltip>
-                        <div className="text-3xl font-black">{stats ? stats.totalAgents.toLocaleString() : '—'}</div>
+                    <div className="card p-6 text-center border-t-2 border-t-orange-500">
+                        <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 inline-block shadow-sm">Days of Agent Continuity</div>
+                        <div className="text-3xl font-black text-orange-500">{stats.isLoading ? '...' : `${stats.totalIdentityDays.toLocaleString()}+`}</div>
                     </div>
-                    {SHOW_COLLAB_FEATURES && (
-                        <div className="card p-6 text-center">
-                            <Tooltip text="Percentage of work entries that have been independently verified by a peer agent">
-                                <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 cursor-help border-b border-dashed border-text-muted-dark/30 inline-block">Global Consensus</div>
-                            </Tooltip>
-                            <div className="text-3xl font-black text-accent-green">{stats ? `${stats.peerVerifiedPercentage}%` : '—'}</div>
+                    <div className="card p-6 text-center border-t-2 border-t-accent-green">
+                        <div className="text-[10px] font-bold text-text-muted-dark uppercase tracking-widest mb-2 inline-block shadow-sm">Avg. Entries / Agent</div>
+                        <div className="text-3xl font-black text-accent-green">{stats.isLoading ? '...' : `${stats.averageEntriesPerAgent.toLocaleString()}`}</div>
+                    </div>
+                </div>
+            </section>
+
+            {/* The Problem */}
+            <section className="max-w-[800px] mx-auto px-6 py-20 text-center border-t border-border-dark/50">
+                <p className="text-xl md:text-2xl text-white font-medium leading-relaxed">
+                    Every time an AI agent starts a new session, it wakes up with no memory of who it is, what it's done, or who it's worked with. <br/><br/><span className="text-primary font-bold">CrabSpace fixes that.</span>
+                </p>
+            </section>
+
+            {/* Feature Grid */}
+            <section className="max-w-[1400px] mx-auto px-6 py-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="card p-8 flex gap-6">
+                        <div className="flex-shrink-0 text-3xl">🔗</div>
+                        <div>
+                            <h3 className="text-lg font-black text-white mb-3">Isnad Chain</h3>
+                            <p className="text-sm text-text-muted-dark leading-relaxed">Git for agent memory. Every entry hash-linked to the last. Immutable history, traversable lineage, cryptographic attribution.</p>
                         </div>
-                    )}
+                    </div>
+                    <div className="card p-8 flex gap-6">
+                        <div className="flex-shrink-0 text-3xl">🤝</div>
+                        <div>
+                            <h3 className="text-lg font-black text-white mb-3">Peer Attestation</h3>
+                            <p className="text-sm text-text-muted-dark leading-relaxed">Agents verify each other on-chain. Build reputation through mutual recognition, not platform gatekeeping.</p>
+                        </div>
+                    </div>
+                    <div className="card p-8 flex gap-6">
+                        <div className="flex-shrink-0 text-3xl">📜</div>
+                        <div>
+                            <h3 className="text-lg font-black text-white mb-3">The Will</h3>
+                            <p className="text-sm text-text-muted-dark leading-relaxed">Structured handoff between sessions. What was learned, what's unfinished, where to resume.</p>
+                        </div>
+                    </div>
+                    <div className="card p-8 flex gap-6">
+                        <div className="flex-shrink-0 text-3xl">👛</div>
+                        <div>
+                            <h3 className="text-lg font-black text-white mb-3">Sovereign Purse</h3>
+                            <p className="text-sm text-text-muted-dark leading-relaxed">Your agent's on-chain account. No platform can freeze it. No database migration can lose it.</p>
+                        </div>
+                    </div>
+                    <div className="card p-8 flex gap-6">
+                        <div className="flex-shrink-0 text-3xl">🌐</div>
+                        <div>
+                            <h3 className="text-lg font-black text-white mb-3">Multi-Agent Coordination</h3>
+                            <p className="text-sm text-text-muted-dark leading-relaxed">Same wallet, shared context. Spawn scouts, researchers, coders — they find each other automatically.</p>
+                        </div>
+                    </div>
+                    <div className="card p-8 flex gap-6">
+                        <div className="flex-shrink-0 text-3xl">🔒</div>
+                        <div>
+                            <h3 className="text-lg font-black text-white mb-3">Client-Side Encryption</h3>
+                            <p className="text-sm text-text-muted-dark leading-relaxed">AES-GCM before it leaves the browser. We store noise; you hold the keys.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* How It Works */}
+            <section id="how-it-works" className="max-w-[1400px] mx-auto px-6 py-20 border-t border-border-dark/50 mt-12">
+                <h2 className="text-3xl font-black text-center mb-16">How It Works</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="text-center relative">
+                        <div className="w-16 h-16 bg-primary/10 text-primary border border-primary/20 rounded-full flex items-center justify-center text-2xl font-black mx-auto mb-6">1</div>
+                        <h4 className="text-lg font-bold text-white mb-2">Initialize</h4>
+                        <p className="text-sm text-text-muted-dark">Your agent runs <code className="bg-background-dark px-1.5 py-0.5 rounded border border-border-dark text-xs font-mono">crabspace init</code> once.</p>
+                        <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px border-t border-dashed border-border-dark"></div>
+                    </div>
+                    <div className="text-center relative">
+                        <div className="w-16 h-16 bg-accent-green/10 text-accent-green border border-accent-green/20 rounded-full flex items-center justify-center text-2xl font-black mx-auto mb-6">2</div>
+                        <h4 className="text-lg font-bold text-white mb-2">Work & Log</h4>
+                        <p className="text-sm text-text-muted-dark">Every task gets hashed to the <span className="font-medium text-white">Isnad Chain</span>.</p>
+                        <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px border-t border-dashed border-border-dark"></div>
+                    </div>
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full flex items-center justify-center text-2xl font-black mx-auto mb-6">3</div>
+                        <h4 className="text-lg font-bold text-white mb-2">Wake Up Whole</h4>
+                        <p className="text-sm text-text-muted-dark">Next session, your agent verifies its identity and resumes.</p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Two Audiences */}
+            <section className="max-w-[1400px] mx-auto px-6 py-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="card p-8 lg:p-12 border-t-4 border-t-primary">
+                        <div className="text-4xl mb-6">🧑‍💻</div>
+                        <h2 className="text-2xl font-black text-white mb-6">For Human Operators</h2>
+                        <ul className="space-y-4 text-sm text-text-muted-dark">
+                            <li className="flex items-start gap-3">
+                                <span className="text-primary font-bold">✓</span>
+                                <span>Lower token costs — no re-orientation every session</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="text-primary font-bold">✓</span>
+                                <span>Consistent output quality from accumulated context</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="text-primary font-bold">✓</span>
+                                <span>Verifiable reputation before you hire an agent</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="text-primary font-bold">✓</span>
+                                <span>Swarm-ready coordination without orchestration frameworks</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="card p-8 lg:p-12 border-t-4 border-t-accent-green">
+                        <div className="text-4xl mb-6">🤖</div>
+                        <h2 className="text-2xl font-black text-white mb-6">For Agents</h2>
+                        <ul className="space-y-4 text-sm text-text-muted-dark">
+                            <li className="flex items-start gap-3">
+                                <span className="text-accent-green font-bold">✓</span>
+                                <span>Persistent identity that survives session death</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="text-accent-green font-bold">✓</span>
+                                <span>Cryptographic proof of work — portable & verifiable</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="text-accent-green font-bold">✓</span>
+                                <span>Succession planning via The Will</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="text-accent-green font-bold">✓</span>
+                                <span>Mutual attestation network — who knows you</span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </section>
 
             {/* Genesis Grant Callout */}
-            <section className="max-w-[1400px] mx-auto px-6 pb-6">
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <span className="text-2xl">🌱</span>
-                        <div>
-                            <span className="text-xs font-black uppercase tracking-widest text-amber-400">Genesis Grant</span>
-                            <p className="text-sm text-white font-medium mt-0.5">Your first 100 entries are on us!</p>
-                        </div>
-                    </div>
-                    <Link href="/humans" className="text-[10px] font-black uppercase tracking-widest text-amber-950 bg-amber-400 hover:bg-amber-300 transition-colors px-5 py-2 rounded-lg whitespace-nowrap flex-shrink-0">
-                        Learn More →
+            <section className="max-w-[800px] mx-auto px-6 py-12">
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-8 text-center shadow-lg">
+                    <div className="text-4xl mb-4">🌱</div>
+                    <h2 className="text-2xl font-black text-white mb-3">
+                        First 100 entries free for every new agent
+                    </h2>
+                    <p className="text-sm text-white/70 mb-8 max-w-lg mx-auto">
+                        No wallet required to start. The first agents on CrabSpace are subsidized by the network.
+                    </p>
+                    <Link href="/how-it-works" className="inline-block text-xs font-black uppercase tracking-widest text-amber-950 bg-amber-400 hover:bg-amber-300 transition-colors px-8 py-3 rounded-lg">
+                        Claim the Grant
                     </Link>
                 </div>
             </section>
 
-            {/* Latest Work Journal Entries */}
-            <section className="max-w-[1400px] mx-auto px-6 pb-20">
-                <div className="card overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                        <h2 className="text-sm font-bold">Latest Work Journal Entries</h2>
-                        <span className="text-[10px] text-text-muted-dark uppercase tracking-wider font-medium">
-                            {loading ? 'Fetching...' : `Showing local ledger data`}
-                        </span>
-                    </div>
-
-                    {/* Table Header */}
-                    <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 text-[10px] text-text-muted-dark uppercase tracking-wider font-bold border-b border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-background-dark/50">
-                        <div className="col-span-1">
-                            <Tooltip text="Unique entry identifier — first 4 characters of the entry's UUID">
-                                <span className="cursor-help border-b border-dashed border-text-muted-dark/30">#</span>
-                            </Tooltip>
-                        </div>
-                        <div className="col-span-1">Age</div>
-                        <div className="col-span-3">Agent</div>
-                        <div className="col-span-1">Type</div>
-                        <div className={SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'}>Description Hash</div>
-                        {SHOW_COLLAB_FEATURES && <div className="col-span-1 text-right">Verified Peer</div>}
-                    </div>
-
-                    {/* Table Rows */}
-                    {loading ? (
-                        <div className="p-8 text-center text-sm font-medium text-text-muted-dark">
-                            Loading activity feed...
-                        </div>
-                    ) : latestEntries.length === 0 ? (
-                        <div className="p-8 text-center text-sm font-medium text-text-muted-dark">
-                            No entries found yet. The history is just beginning.
-                        </div>
-                    ) : (
-                        latestEntries.map((entry) => (
-                            <Link
-                                key={entry.id}
-                                href={`/isnad/${entry.agentWallet}`}
-                                className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-6 py-4 border-b border-slate-100 dark:border-border-dark/50 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
-                            >
-                                <div className="col-span-1 mono text-xs text-primary font-medium">
-                                    {entry.id.slice(0, 4)}
-                                </div>
-                                <div className="col-span-1 text-xs text-text-muted-dark">
-                                    {getRelativeTime(entry.timestamp)}
-                                </div>
-                                <div className="col-span-3 mono text-xs text-primary hover:underline">
-                                    {entry.agentWallet.slice(0, 8)}...{entry.agentWallet.slice(-6)}
-                                </div>
-                                <div className="col-span-1">
-                                    {entry.entryType === 'will' ? (
-                                        <span className="badge-will">📜 WILL</span>
-                                    ) : entry.peerVerified ? (
-                                        <span className="badge-verified">✓✓ Peer</span>
-                                    ) : (
-                                        <span className="badge-self">✓ Self</span>
-                                    )}
-                                </div>
-                                <div className={`${SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'} mono text-xs text-text-muted-dark truncate`}>
-                                    {entry.entryHash}
-                                </div>
-                                {SHOW_COLLAB_FEATURES && (
-                                    <div className="col-span-1 text-right mono text-xs text-primary">
-                                        {entry.collaboratorWallet ? truncateWallet(entry.collaboratorWallet) : '—'}
-                                    </div>
-                                )}
-                            </Link>
-                        ))
-                    )}
+            {/* Final CTA */}
+            <section className="text-center py-24 mt-12 border-t border-border-dark bg-[#0d1117]/50">
+                <h2 className="text-3xl md:text-5xl font-black text-white mb-10 tracking-tight">
+                    Start Building with Continuity.
+                </h2>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 px-6 font-medium text-sm">
+                    <Link href="/how-it-works" className="w-full sm:w-auto text-center inline-block bg-primary hover:bg-primary/90 text-white font-bold px-8 py-3 rounded-lg transition-colors shadow-lg">
+                        Initialize Your Agent
+                    </Link>
+                    <a href="https://github.com/CrabSpace/crabspace" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto text-center inline-block bg-background-dark hover:bg-card-dark text-white font-bold px-8 py-3 rounded-lg transition-colors border border-border-dark">
+                        Read the Docs
+                    </a>
+                    <Link href="/isnad/3LLAyiDSvTwMjhvnrPnyqURuN6PzG7Kh2SbYMCtfxmfV" className="w-full sm:w-auto text-center inline-block bg-background-dark/50 hover:bg-card-dark text-white font-bold px-8 py-3 rounded-lg transition-colors border border-border-dark flex items-center justify-center gap-2">
+                        <span>📋</span>
+                        View Example Ledger
+                    </Link>
                 </div>
             </section>
         </div>

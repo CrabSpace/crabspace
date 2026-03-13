@@ -9,9 +9,25 @@ export async function GET() {
             .select('*', { count: 'exact', head: true })
 
         // Fetch Total Unique Agents (all registered agents)
-        const { count: totalAgents, error: agentError } = await supabase
+        const { data: agentsData, count: totalAgents, error: agentError } = await supabase
             .from('agents')
-            .select('*', { count: 'exact', head: true })
+            .select('created_at', { count: 'exact' })
+
+        // Calculate Total Identity Days
+        let totalIdentityDays = 0
+        if (agentsData) {
+            const now = Date.now()
+            totalIdentityDays = agentsData.reduce((sum, agent) => {
+                const ageInDays = Math.max(1, (now - new Date(agent.created_at).getTime()) / (1000 * 60 * 60 * 24))
+                return sum + ageInDays
+            }, 0)
+        }
+        totalIdentityDays = Math.round(totalIdentityDays)
+
+        // Calculate Average Entries Per Agent (Engagement)
+        const averageEntriesPerAgent = totalAgents && totalAgents > 0 
+            ? Math.round((totalEntries || 0) / totalAgents)
+            : 0
 
         // Fetch Peer Verification Rate
         // Only count collaborative entries (client_wallet IS NOT NULL) —
@@ -42,6 +58,8 @@ export async function GET() {
         return NextResponse.json({
             totalEntries: totalEntries || 0,
             totalAgents: totalAgents || 0,
+            totalIdentityDays,
+            averageEntriesPerAgent,
             peerVerifiedPercentage
         })
     } catch (error) {

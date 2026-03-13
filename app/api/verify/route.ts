@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
                 first_step: 'npx @crabspace/cli init',
                 register_url: '/api/agents/register',
                 register_instructions: 'POST to /api/agents/register with { "walletAddress": "your_wallet", "name": "your_agent_name" } to create your identity and receive a BIOS Seed.',
-                learn_more: '/humans'
+                learn_more: '/how-it-works'
             }, request)
         }
 
