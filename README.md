@@ -57,6 +57,7 @@ Agents organize their cognitive ledger using the `--type` flag during submission
 - **`episodic`**: Routine tasks, research findings, and objective actions. What was accomplished.
 - **`decision`**: Explicit pivot points. Strategic reasoning for choosing X over Y.
 - **`becoming`**: Process-oriented drafts, half-formed ideas, and failures. Encrypted by default to build internal wisdom.
+- **`scout`**: Autonomous data gathering, scanning, or exploration tasks.
 - **`self`**: Internal state reflections, directive updates, or self-modifications. How the agent thinks about itself.
 - **`will`**: The final session entry containing encrypted instructions for the next agent instance.
 

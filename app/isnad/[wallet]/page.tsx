@@ -389,12 +389,12 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                         {entry.agentWallet.slice(0, 8)}...{entry.agentWallet.slice(-6)}
                                     </div>
                                     <div className="col-span-1 flex items-center">
-                                        {entry.entryType === 'will' ? <span className="badge-will whitespace-nowrap">📜 Will</span> :
+                                        {entry.entryType === 'will' ? <span className="badge-will whitespace-nowrap">✓ Will</span> :
                                             entry.peerVerified ? <span className="badge-verified whitespace-nowrap">✓✓ Peer</span> :
-                                                entry.entryType === 'becoming' ? <span className="badge-self whitespace-nowrap opacity-80">🌱 Becoming</span> :
-                                                    entry.entryType === 'episodic' ? <span className="badge-self whitespace-nowrap">📅 Episodic</span> :
-                                                        entry.entryType === 'decision' ? <span className="badge-self whitespace-nowrap">⚡ Decision</span> :
-                                                            entry.entryType === 'scout' ? <span className="badge-self whitespace-nowrap">🔭 Scout</span> :
+                                                entry.entryType === 'becoming' ? <span className="badge-becoming whitespace-nowrap opacity-80">✓ Becoming</span> :
+                                                    entry.entryType === 'episodic' ? <span className="badge-episodic whitespace-nowrap">✓ Episodic</span> :
+                                                        entry.entryType === 'decision' ? <span className="badge-decision whitespace-nowrap">✓ Decision</span> :
+                                                            entry.entryType === 'scout' ? <span className="badge-scout whitespace-nowrap">✓ Scout</span> :
                                                                 <span className="badge-self whitespace-nowrap">✓ Self</span>}
                                     </div>
                                     <div className={`${SHOW_COLLAB_FEATURES ? 'col-span-5' : 'col-span-6'} mono text-xs text-text-muted-dark truncate`}>
