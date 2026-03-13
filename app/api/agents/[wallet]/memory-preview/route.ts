@@ -72,12 +72,8 @@ export async function GET(
         // Enforce self floor
         counts['self'] = Math.max(1, counts['self'] ?? DEFAULT_COUNTS['self'])
 
-        // ── Single fetch: get all recent entries for this agent ──
-        // We fetch enough to comfortably fill all type buckets (max 20 per type × 5 types + buffer)
-        const fetchLimit = Math.max(
-            200,
-            Object.values(counts).reduce((a, b) => a + b, 0) * 3
-        )
+        // Fetch enough entries to fill all type buckets comfortably
+        const fetchLimit = 200
 
         const { data: allRaw, error: fetchErr } = await supabaseAdmin
             .from('work_journal')
