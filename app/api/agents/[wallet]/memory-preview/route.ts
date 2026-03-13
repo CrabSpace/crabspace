@@ -1,8 +1,12 @@
 /**
  * GET /api/agents/[wallet]/memory-preview
- * Returns the exact entries that operator's current memory_config would surface at boot.
+ * Returns the exact entries that the operator's current memory_config would surface at boot.
  * Used by the "Preview Boot Context" button in the admin UI.
  * Entries are returned still-encrypted (decryption happens client-side).
+ *
+ * Strategy: fetch all recent entries for the agent in ONE query, classify by
+ * project_name in code, then apply per-type count limits. Avoids all PostgREST
+ * ilike syntax edge-cases.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -15,6 +19,20 @@ const DEFAULT_COUNTS: Record<string, number> = {
     becoming: 5,
     scout: 5,
     self: 3,
+}
+
+/** Classify a project_name into one of our memory types */
+function classifyProjectName(projectName: string | null): string {
+    if (!projectName) return 'self'
+    const lower = projectName.toLowerCase()
+    if (lower.includes(':memory:episodic')) return 'episodic'
+    if (lower.includes(':memory:decision')) return 'decision'
+    if (lower.includes(':memory:becoming')) return 'becoming'
+    if (lower.includes(':memory:scout')) return 'scout'
+    if (lower.includes(':memory:self')) return 'self'
+    if (lower.includes(':memory:will')) return 'will'
+    // Un-typed entries (e.g. "Autonomous Work") → treat as self
+    return 'self'
 }
 
 export async function GET(
@@ -44,7 +62,7 @@ export async function GET(
 
         if (agentErr || !agent) {
             console.error('[memory-preview] Agent lookup failed:', agentErr?.message, 'wallet:', wallet)
-            return NextResponse.json({ error: 'Agent not found', debug_wallet_received: wallet, debug_wallet_length: wallet.length }, { status: 404 })
+            return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
         }
 
         const counts = useQueryParams
@@ -54,88 +72,50 @@ export async function GET(
         // Enforce self floor
         counts['self'] = Math.max(1, counts['self'] ?? DEFAULT_COUNTS['self'])
 
-        // ── DIAGNOSTIC: fetch real project_names to see what's in the DB ──
-        const { data: sampleEntries, error: sampleErr } = await supabaseAdmin
-            .from('work_journal')
-            .select('id, project_name, is_will')
-            .eq('agent_id', agent.id)
-            .order('created_at', { ascending: false })
-            .limit(50)
+        // ── Single fetch: get all recent entries for this agent ──
+        // We fetch enough to comfortably fill all type buckets (max 20 per type × 5 types + buffer)
+        const fetchLimit = Math.max(
+            200,
+            Object.values(counts).reduce((a, b) => a + b, 0) * 3
+        )
 
-        if (sampleErr) console.error('[memory-preview] sample query error:', sampleErr.message)
-
-        const diagnosticProjectNames = [...new Set((sampleEntries || []).map(e => e.project_name))]
-
-        // Fetch entries per type
-        const types = ['episodic', 'decision', 'becoming', 'scout', 'self']
-        const allEntries: any[] = []
-        const seenIds = new Set<string>()
-
-        for (const type of types) {
-            const limit = counts[type] ?? 0
-            if (limit === 0) continue
-
-            if (type === 'self') {
-                // Self entries are either explicitly typed (:memory:self) OR un-typed
-                // (submitted without --type, e.g. project_name = 'Autonomous Work').
-                // Two separate queries to avoid PostgREST OR syntax complexity.
-
-                // 1. Explicitly typed self
-                const { data: typedSelf } = await supabaseAdmin
-                    .from('work_journal')
-                    .select('id, entry_index, description, project_name, created_at, is_will')
-                    .eq('agent_id', agent.id)
-                    .ilike('project_name', '%:memory:self')
-                    .order('created_at', { ascending: false })
-                    .limit(limit)
-
-                // 2. Un-typed entries (no :memory: in project_name)
-                const { data: untypedSelf } = await supabaseAdmin
-                    .from('work_journal')
-                    .select('id, entry_index, description, project_name, created_at, is_will')
-                    .eq('agent_id', agent.id)
-                    .not('project_name', 'ilike', '%:memory:%')
-                    .order('created_at', { ascending: false })
-                    .limit(limit)
-
-                const combined = [...(typedSelf || []), ...(untypedSelf || [])]
-                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                    .slice(0, limit)
-
-                for (const e of combined) {
-                    if (!seenIds.has(e.id)) {
-                        seenIds.add(e.id)
-                        allEntries.push({ ...e, _type: 'self' })
-                    }
-                }
-            } else {
-                const { data } = await supabaseAdmin
-                    .from('work_journal')
-                    .select('id, entry_index, description, project_name, created_at, is_will')
-                    .eq('agent_id', agent.id)
-                    .ilike('project_name', `%:memory:${type}`)
-                    .order('created_at', { ascending: false })
-                    .limit(limit)
-
-                for (const e of (data || [])) {
-                    if (!seenIds.has(e.id)) {
-                        seenIds.add(e.id)
-                        allEntries.push({ ...e, _type: type })
-                    }
-                }
-            }
-        }
-
-        // Always include most recent will entry
-        const { data: willEntry } = await supabaseAdmin
+        const { data: allRaw, error: fetchErr } = await supabaseAdmin
             .from('work_journal')
             .select('id, entry_index, description, project_name, created_at, is_will')
             .eq('agent_id', agent.id)
-            .eq('is_will', true)
             .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
+            .limit(fetchLimit)
 
+        if (fetchErr) {
+            console.error('[memory-preview] Entry fetch failed:', fetchErr.message)
+            return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 })
+        }
+
+        // ── Classify and bucket entries by type ──
+        const buckets: Record<string, any[]> = {
+            episodic: [], decision: [], becoming: [], scout: [], self: [], will: []
+        }
+
+        for (const entry of (allRaw || [])) {
+            // Will entries get their own bucket
+            if (entry.is_will) {
+                buckets['will'].push(entry)
+                continue
+            }
+            const type = classifyProjectName(entry.project_name)
+            buckets[type].push(entry)
+        }
+
+        // ── Apply per-type limits ──
+        const allEntries: any[] = []
+        for (const type of ['episodic', 'decision', 'becoming', 'scout', 'self']) {
+            const limit = counts[type] ?? 0
+            const slice = buckets[type].slice(0, limit)
+            allEntries.push(...slice.map(e => ({ ...e, _type: type })))
+        }
+
+        // Always include most recent will entry (will entries are always shown first)
+        const willEntry = buckets['will'][0] ?? null
         const willEntries = willEntry ? [{ ...willEntry, _type: 'will' }] : []
 
         // will always first, then others newest-first
@@ -154,9 +134,7 @@ export async function GET(
             entries: sorted,
             total_count: totalCount,
             large_context_warning: isLargeContext,
-            counts_used: counts,
-            _debug_project_names: diagnosticProjectNames,
-            _debug_agent_id: agent.id
+            counts_used: counts
         })
     } catch (err: any) {
         console.error('[memory-preview GET]', err)
