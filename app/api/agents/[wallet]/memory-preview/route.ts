@@ -44,7 +44,7 @@ export async function GET(
 
         if (agentErr || !agent) {
             console.error('[memory-preview] Agent lookup failed:', agentErr?.message, 'wallet:', wallet)
-            return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+            return NextResponse.json({ error: 'Agent not found', debug_wallet_received: wallet, debug_wallet_length: wallet.length }, { status: 404 })
         }
 
         const counts = useQueryParams
