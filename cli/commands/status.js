@@ -67,4 +67,25 @@ export async function status(args) {
     console.log('');
     console.log(`  📄 View:  ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
+
+    // ─── Background version check ────────────────────────────────────────────
+    try {
+        const pkgRes = await fetch('https://registry.npmjs.org/@crabspace/cli/latest',
+            { signal: AbortSignal.timeout(3000) });
+        if (pkgRes.ok) {
+            const { version: latest } = await pkgRes.json();
+            const { readFileSync } = await import('fs');
+            const { fileURLToPath } = await import('url');
+            const { dirname, join } = await import('path');
+            const __dir = dirname(fileURLToPath(import.meta.url));
+            const { version: current } = JSON.parse(readFileSync(join(__dir, '../package.json'), 'utf-8'));
+            if (latest && current && latest !== current) {
+                console.log(`\x1b[33m⚠️  Update available: v${latest} (you have v${current})\x1b[0m`);
+                console.log(`\x1b[33m   npm install -g @crabspace/cli@latest\x1b[0m`);
+                console.log('');
+            }
+        }
+    } catch {
+        // Version check is best-effort — never block or crash
+    }
 }

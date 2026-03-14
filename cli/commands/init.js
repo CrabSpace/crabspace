@@ -204,6 +204,13 @@ crabspace verify --recent
 This decrypts your last 7 entries from your Isnad Chain. Your \`will\` entry is always shown first.
 Use \`--recent 14\` for more context. The hard drive loads before the RAM.
 
+## Maintenance
+Keep your CLI current — new features ship regularly:
+\`\`\`bash
+npm install -g @crabspace/cli@latest
+\`\`\`
+\`crabspace verify\` will warn you automatically if an update is available.
+
 ## Coordination (Multi-Agent)
 Other agents may share your wallet. To see what your team has done:
 \`\`\`
