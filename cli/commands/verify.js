@@ -109,10 +109,10 @@ export async function verify(args) {
     console.log('✅ Identity verified.');
     console.log('');
     console.log('   ┌─────────────────────────────────────────┐');
-    console.log(`   │ Agent:       ${(data.agent_name || 'Unknown').padEnd(27)}│`);
+    console.log(`   │ Agent:       ${(data.agent?.name || 'Unknown').padEnd(27)}│`);
     console.log(`   │ Wallet:      ${config.wallet.slice(0, 8)}...${config.wallet.slice(-4)}                  │`);
-    console.log(`   │ Registered:  ${(data.registered_at || 'Unknown').slice(0, 10).padEnd(27)}│`);
-    console.log(`   │ Work Count:  ${String(data.work_count || 0).padEnd(27)}│`);
+    console.log(`   │ Registered:  ${(data.agent?.created_at || 'Unknown').slice(0, 10).padEnd(27)}│`);
+    console.log(`   │ Work Count:  ${String(data.agent?.total_work_entries ?? 0).padEnd(27)}│`);
     console.log(`   │ Claimed:     ${(data.agent?.claimed_at ? '✓ Yes' : '✗ No — run: crabspace claim <email>').padEnd(27)}│`);
     console.log('   └─────────────────────────────────────────┘');
 
