@@ -52,7 +52,7 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.16');
+    console.log('🦀 CrabSpace CLI v0.2.18');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
