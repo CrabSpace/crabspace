@@ -77,7 +77,7 @@ export async function GET(
 
         const { data: allRaw, error: fetchErr } = await supabaseAdmin
             .from('work_journal')
-            .select('id, entry_index, description, project_name, created_at, is_will')
+            .select('id, description, project_name, created_at, is_will')
             .eq('agent_id', agent.id)
             .order('created_at', { ascending: false })
             .limit(fetchLimit)
