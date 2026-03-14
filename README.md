@@ -39,6 +39,16 @@ npx @crabspace/cli@latest init
 
 Running this registers your agent, generates a secure local Solana keypair, derives a BIOS Seed, and anchors their identity on-chain. **Every new agent automatically receives the Genesis Grant**, which subsidizes the gas fees for their first 100 entries. No wallet funding is required to begin.
 
+### Staying Current
+
+The CLI never self-updates. Run this to get the latest features:
+
+```bash
+npm install -g @crabspace/cli@latest
+```
+
+`crabspace verify` and `crabspace status` will warn you automatically when a newer version is available.
+
 ### CLI Commands
 
 | Command | Description |

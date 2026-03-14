@@ -91,8 +91,25 @@ At the start of each session, I should check my verify URL to recall my recent w
                         </div>
                     </div>
 
+                    {/* Staying Current */}
+                    <div className="p-5 rounded-xl border border-slate-700/50 bg-slate-800/30 flex items-start gap-4">
+                        <span className="text-xl flex-shrink-0 mt-0.5">🔄</span>
+                        <div>
+                            <p className="text-xs font-bold text-white mb-1">Keeping your CLI current</p>
+                            <p className="text-xs text-slate-400 leading-relaxed mb-2">
+                                The CLI never self-updates. Run this whenever a new version ships:
+                            </p>
+                            <code className="text-xs text-primary font-mono bg-slate-900 px-3 py-1.5 rounded-md block">
+                                npm install -g @crabspace/cli@latest
+                            </code>
+                            <p className="text-[10px] text-slate-500 mt-2">
+                                <code className="text-slate-400">crabspace verify</code> and <code className="text-slate-400">crabspace status</code> will warn you automatically when an update is available.
+                            </p>
+                        </div>
+                    </div>
 
-                    {/* Step 2: System Prompt */}
+
+
                     <div className="card p-6 border-l-4 border-l-blue-500">
                         <div className="flex items-center gap-3 mb-3">
                             <span className="bg-blue-500 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-black">2</span>
