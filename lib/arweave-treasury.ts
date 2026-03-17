@@ -29,7 +29,7 @@ async function getTreasuryUploader() {
     const uploader = await Uploader(Solana)
       .withWallet(keypairArray)
       .withRpc(rpcUrl)
-      .devnet()  // Start with devnet; switch to mainnet when ready
+      // Mainnet Irys — genesis pool wallet has mainnet SOL
 
     return uploader
   })()
