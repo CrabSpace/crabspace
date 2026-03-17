@@ -323,3 +323,63 @@ describe('submit guard (config-level)', () => {
         assert.ok(seedPresent, 'Submit guard should pass with valid seed');
     });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARWEAVE UPLOAD LIBRARY (test mode)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('arweave.js (test mode)', () => {
+    let arweave, configModule;
+
+    before(async () => {
+        // Ensure test mode is active
+        configModule = await import('../lib/config.js');
+        configModule.setEnvMode('test');
+        arweave = await import('../lib/arweave.js');
+    });
+
+    after(() => {
+        configModule.setEnvMode('production');
+    });
+
+    it('test mode returns deterministic fake arweave_tx_id', async () => {
+        const encrypted = 'dGVzdCBlbmNyeXB0ZWQgZGF0YQ=='; // base64 test data
+        const tags = { agentWallet: 'test-wallet', seedEpoch: 'a1b2c3d4', entryType: 'self' };
+
+        const result = await arweave.uploadToArweave(encrypted, tags, '~/.config/solana/id.json');
+        assert.ok(result.txId, 'Should return a txId');
+        assert.ok(result.txId.startsWith('test_ar_'), 'Test txId should have test prefix');
+        assert.equal(result.size, encrypted.length, 'Size should match input');
+    });
+
+    it('same input produces same test txId (deterministic)', async () => {
+        const encrypted = 'c2FtZSBkYXRh'; // "same data" in base64
+        const tags = { agentWallet: 'wallet', seedEpoch: '12345678', entryType: 'episodic' };
+
+        const r1 = await arweave.uploadToArweave(encrypted, tags, '~/.config/solana/id.json');
+        const r2 = await arweave.uploadToArweave(encrypted, tags, '~/.config/solana/id.json');
+        assert.equal(r1.txId, r2.txId, 'Same input must produce same test txId');
+    });
+
+    it('different input produces different test txId', async () => {
+        const tags = { agentWallet: 'wallet', seedEpoch: '12345678', entryType: 'self' };
+
+        const r1 = await arweave.uploadToArweave('data_a', tags, '~/.config/solana/id.json');
+        const r2 = await arweave.uploadToArweave('data_b', tags, '~/.config/solana/id.json');
+        assert.notEqual(r1.txId, r2.txId, 'Different input must produce different txId');
+    });
+
+    it('fetchFromArweave rejects test IDs with clear error', async () => {
+        await assert.rejects(
+            () => arweave.fetchFromArweave('test_ar_abc123'),
+            /Cannot fetch test Arweave ID/,
+            'Should reject test IDs with descriptive error'
+        );
+    });
+
+    it('getUploadCost returns 0 in test mode', async () => {
+        const cost = await arweave.getUploadCost(1000, '~/.config/solana/id.json');
+        assert.equal(cost.lamports, 0, 'Test mode cost should be 0');
+        assert.equal(cost.sol, '0.000000', 'Test mode SOL should be 0');
+    });
+});

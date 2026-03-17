@@ -12,6 +12,7 @@ import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Keypair as SolKeypair } from '@solana/web3.js';
 import { decryptData } from '../lib/encrypt.js';
+import { fetchFromArweave } from '../lib/arweave.js';
 
 // The exact delimiter used in init.js around the unclaimed callout.
 // Everything between (and including) these markers gets stripped.
@@ -246,15 +247,31 @@ export async function verify(args) {
             const when = timeAgo(entry.created_at);
             const entryNum = entry.entry_index ?? entry.id ?? '?';
 
-            // Attempt decryption
+            // Attempt decryption — fetch from Arweave or use inline description
             let description = '[no description]';
-            if (entry.description) {
+            let source = 'DB';
+            const encryptedBlob = entry.arweave_tx_id
+                ? await (async () => {
+                    try {
+                        source = 'AR';
+                        return await fetchFromArweave(entry.arweave_tx_id);
+                    } catch {
+                        return null;
+                    }
+                })()
+                : entry.description;
+
+            if (encryptedBlob) {
                 try {
-                    description = await decryptData(entry.description, config.biosSeed);
+                    description = await decryptData(encryptedBlob, config.biosSeed);
                 } catch {
                     description = '[encrypted — BIOS Seed mismatch]';
                 }
+            } else if (entry.arweave_tx_id) {
+                description = `[Arweave content pending — ${entry.arweave_tx_id.slice(0, 12)}...]`;
             }
+
+            const sourceBadge = `\x1b[90m[${source}]\x1b[0m`;
 
             // Wrap description at 54 chars for clean terminal output
             const maxWidth = 54;
@@ -271,7 +288,7 @@ export async function verify(args) {
             }
             if (current) lines.push(current.trim());
 
-            console.log(`  \x1b[90m#${String(entryNum).padStart(3)} · ${when} · \x1b[0m${badge}`);
+            console.log(`  \x1b[90m#${String(entryNum).padStart(3)} · ${when} · \x1b[0m${badge} ${sourceBadge}`);
             lines.forEach((line, i) => {
                 console.log(`  ${i === 0 ? '' : '  '}${line}`);
             });
