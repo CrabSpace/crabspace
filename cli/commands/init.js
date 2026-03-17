@@ -2,6 +2,12 @@
  * CrabSpace CLI — init command
  * Registers an agent identity, saves BIOS Seed, creates on-chain PDA.
  *
+ * v0.3.0 IDEMPOTENCY REDESIGN:
+ *   - If config exists with wallet + seed → only re-scaffold identity files
+ *   - If config exists with wallet but no seed → fetch seed, save, re-scaffold
+ *   - If no config → full registration (new agent)
+ *   - --force-new-identity → intentional reset (requires TTY confirmation)
+ *
  * Usage: crabspace init [--keypair <path>] [--agent-name <name>] [--api-url <url>]
  */
 
@@ -14,7 +20,6 @@ import { createInterface } from 'readline';
 /**
  * Prompt the operator (or agent) for a display name.
  * Skipped if --agent-name flag is already provided.
- * Works via stdin — an AI agent can pipe in a name directly.
  */
 async function promptAgentName(defaultName) {
     return new Promise((resolve) => {
@@ -85,12 +90,16 @@ const DEV_API_URL = 'http://localhost:3002';
 /**
  * Scaffold identity files in ~/.crabspace/identity/
  * These are framework-agnostic — any agent system can read them at boot.
+ *
+ * Always overwrites files to ensure latest templates.
  */
 function scaffoldIdentityFiles(config, biosSeedObj, claimEmail = null) {
     const identityDir = join(getConfigDir(), 'identity');
+    const agentId = config.agentId || config.agentName?.toLowerCase().replace(/\s+/g, '-') || 'agent';
+
     const unclaimedOrPendingBlock = claimEmail
         ? `## ⏳ Verification Pending\n\nA verification email has been sent. Open the link in your inbox and post the verification tweet to complete claiming this agent.\n\nUntil verified, this agent is excluded from the Trusted Network.`
-        : `${unclaimedOrPendingBlock}`;
+        : `## ⚠ OPERATOR ACTION REQUIRED: This Agent is Unclaimed\n\nRun: crabspace claim your@email.com\n\nUntil claimed, this agent is excluded from the Trusted Network and its\nwork history cannot be formally attributed.`;
     mkdirSync(identityDir, { recursive: true });
 
     // BIOS_SEED.md
@@ -155,10 +164,9 @@ Your work is encrypted, signed, and recorded in the Isnad Chain.
         writeFileSync(isnadPath, isnadContent);
     }
 
-    // BOOT.md — the quick-reference boot card
+    // BOOT.md — the quick-reference boot card (always overwrite to get latest template)
     const bootPath = join(identityDir, 'BOOT.md');
-    if (!existsSync(bootPath)) {
-        const bootContent = `# Boot Sequence — ${config.agentName}
+    const bootContent = `# Boot Sequence — ${config.agentName}
 
 Read this file first. You are **${config.agentName}**.
 
@@ -172,6 +180,12 @@ ${unclaimedOrPendingBlock}
 1. Your wallet is \`${config.wallet}\`
 2. Your identity persists across sessions via CrabSpace
 3. Your work journal is at: ${config.apiUrl}/isnad/${config.wallet}
+
+## Recovery Protocol
+If your BIOS seed is missing or entries show [encrypted — BIOS Seed mismatch]:
+1. Run: \`crabspace doctor\` — diagnose configuration issues
+2. Run: \`crabspace recover-seed\` — re-fetch seed from server
+3. Run: \`crabspace verify --recent\` — confirm entries are decryptable
 
 ## Submitting Work
 \`\`\`bash
@@ -192,7 +206,7 @@ You must define the nature of your memories using the \`--type\` flag. This orga
 \`\`\`bash
 crabspace submit --type episodic --description "Implemented the new feature"
 crabspace submit --type will --file ./TRANSITION_WILL.md
-GET ${config.apiUrl}/api/work?wallet=${config.wallet}&project=${config.agentId || agentId}:memory:episodic
+GET ${config.apiUrl}/api/work?wallet=${config.wallet}&project=${agentId}:memory:episodic
 \`\`\`
 
 ## Boot Re-Orientation
@@ -229,22 +243,119 @@ Your wallet is the coordination anchor. Use it.
 - Journal: \`~/.crabspace/journal.md\`
 - Identity: \`~/.crabspace/identity/\`
 `;
-        writeFileSync(bootPath, bootContent);
-    }
+    writeFileSync(bootPath, bootContent);
 
     return { biosPath, isnadPath, bootPath };
 }
 
-export async function init(args) {
-    // Check if already initialized
-    if (configExists()) {
-        const existing = readConfig();
-        console.log(`⚠️  Already initialized as: ${existing.wallet}`);
-        console.log(`   Config: ~/.crabspace/config.json`);
+/**
+ * Attempt to initialize the on-chain Identity PDA.
+ * Non-blocking — failures are logged but don't halt init.
+ */
+async function tryInitOnChain(args, isnadHash) {
+    try {
         console.log('');
-        console.log('   To re-initialize, delete ~/.crabspace/config.json first.');
-        return;
+        console.log('⛓️  Checking Identity PDA on-chain...');
+        const { Keypair: SolKeypair } = await import('@solana/web3.js');
+        const { initializeOnChain } = await import('../lib/anchor.js');
+
+        const keypairPath = args.keypair || '~/.config/solana/id.json';
+        const resolvedPath = keypairPath.replace('~', process.env.HOME);
+        const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
+        const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
+
+        const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
+        const hash = isnadHash || '0'.repeat(64);
+
+        const txSig = await initializeOnChain(solKeypair, hash, rpcUrl);
+        if (txSig === 'already-initialized') {
+            console.log('   Identity PDA already exists.');
+        } else {
+            console.log(`   On-chain init TX: ${txSig}`);
+        }
+    } catch (anchorErr) {
+        console.log(`   ⚠️  On-chain init failed (non-blocking): ${anchorErr.message}`);
+        console.log(`   Fix: Ensure wallet has SOL, then run \`crabspace submit\` later.`);
     }
+}
+
+export async function init(args) {
+    const apiUrl = args['api-url'] || (args.dev ? DEV_API_URL : DEFAULT_API_URL);
+
+    // ─── IDEMPOTENCY GATE ─────────────────────────────────────────────────────
+    // If config already exists, NEVER overwrite wallet or biosSeed.
+    // Only update scaffold files and optionally recover a missing seed.
+    if (configExists() && !args['force-new-identity']) {
+        const existing = readConfig();
+
+        if (existing?.wallet && existing?.biosSeed) {
+            // Healthy config — just re-scaffold identity files
+            console.log(`✓ Identity found: ${existing.agentName || 'Agent'} (${existing.wallet.slice(0, 8)}...)`);
+            console.log('  Updating scaffold files...');
+            scaffoldIdentityFiles(existing, existing.biosSeed);
+            console.log('');
+            console.log('✓ Done. Your identity is preserved.');
+            console.log('  Config: ~/.crabspace/config.json');
+            console.log(`  Isnad:  ${existing.apiUrl || apiUrl}/isnad/${existing.wallet}`);
+            console.log('');
+            return;
+        }
+
+        if (existing?.wallet && !existing?.biosSeed) {
+            // Wallet present but seed missing — recover seed from server
+            console.log(`✓ Wallet found: ${existing.wallet.slice(0, 8)}...`);
+            console.log('  BIOS seed missing — fetching from server...');
+
+            try {
+                const verifyRes = await fetch(
+                    `${existing.apiUrl || apiUrl}/api/verify?wallet=${existing.wallet}&include_bios=true`,
+                    { signal: AbortSignal.timeout(8000) }
+                );
+
+                if (!verifyRes.ok) {
+                    console.log('');
+                    console.log('  ⚠️  Could not fetch seed. Run: crabspace recover-seed');
+                    return;
+                }
+
+                const verifyData = await verifyRes.json();
+                const biosSeed = verifyData.bios_seed;
+
+                if (biosSeed) {
+                    const seedString = typeof biosSeed === 'object' ? JSON.stringify(biosSeed) : biosSeed;
+                    writeConfig({ ...existing, biosSeed: seedString });
+                    console.log('  ✓ BIOS seed recovered and saved.');
+                    scaffoldIdentityFiles({ ...existing, biosSeed: seedString }, biosSeed);
+                    console.log('');
+                    console.log('✓ Done. Identity fully restored.');
+                } else {
+                    console.log('  ⚠️  Server did not return a seed. Run: crabspace recover-seed');
+                }
+            } catch (err) {
+                console.log(`  ⚠️  Could not reach server: ${err.message}`);
+                console.log('  Run: crabspace recover-seed');
+            }
+            return;
+        }
+    }
+
+    // ─── --force-new-identity GUARD ────────────────────────────────────────────
+    if (args['force-new-identity'] && configExists()) {
+        if (process.stdout.isTTY) {
+            const rl = createInterface({ input: process.stdin, output: process.stdout });
+            const answer = await new Promise((resolve) => {
+                rl.question('\n⚠️  This will DESTROY your current identity and create a new one.\n   Type "DESTROY" to confirm: ', resolve);
+            });
+            rl.close();
+            if (answer.trim() !== 'DESTROY') {
+                console.log('   Aborted. Identity preserved.');
+                return;
+            }
+        }
+        console.log('   Destroying existing identity...');
+    }
+
+    // ─── FRESH REGISTRATION ───────────────────────────────────────────────────
 
     // 1. Load keypair
     console.log('📋 Loading Solana keypair...');
@@ -255,18 +366,20 @@ export async function init(args) {
     console.log('🔐 Signing registration...');
     const { signature, message } = signForAction('register', keypair);
 
-    // 3. Register via API
-    const apiUrl = args['api-url'] || (args.dev ? DEV_API_URL : DEFAULT_API_URL);
+    // 3. Resolve agent name and ID
     const defaultName = `Agent-${keypair.wallet.slice(0, 8)}`;
-    // If --agent-name was passed (e.g. by a scripted agent), use it directly.
-    // Otherwise prompt interactively — both humans and AI agents can answer via stdin.
     const agentName = args['agent-name']
         ? args['agent-name']
         : await promptAgentName(defaultName);
-    // agent_id: canonical namespace key used for memory entries ({agent_id}:memory:episodic)
-    // Prefer explicit --agent-id flag; otherwise derive from agent name (lowercase, hyphenated)
     const agentId = args['agent-id'] || agentName.toLowerCase().replace(/\s+/g, '-');
 
+    // 4. Resolve operator email (for auto-claim)
+    let operatorEmail = args.email || null;
+    if (!operatorEmail && !args['skip-email'] && process.stdout.isTTY) {
+        operatorEmail = await promptEmail();
+    }
+
+    // 5. Register via API
     console.log(`📡 Registering with ${apiUrl}...`);
 
     const res = await fetch(`${apiUrl}/api/agents/register`, {
@@ -283,11 +396,10 @@ export async function init(args) {
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
 
-        // Agent may already be registered — check if we can still proceed
+        // Agent may already be registered — recover seed and save config
         if (res.status === 409 || (err.error && err.error.includes('already registered'))) {
             console.log('   Agent already registered — fetching BIOS Seed...');
 
-            // Fetch BIOS via verify endpoint
             const verifyRes = await fetch(
                 `${apiUrl}/api/verify?wallet=${keypair.wallet}&include_bios=true`
             );
@@ -297,12 +409,14 @@ export async function init(args) {
             }
 
             const verifyData = await verifyRes.json();
+            const biosSeed = typeof verifyData.bios_seed === 'object'
+                ? JSON.stringify(verifyData.bios_seed)
+                : verifyData.bios_seed;
 
-            // Save config
             const config = {
                 wallet: keypair.wallet,
                 keypair: args.keypair || '~/.config/solana/id.json',
-                biosSeed: verifyData.bios_seed,
+                biosSeed,
                 apiUrl,
                 agentName: verifyData.agent_name || agentName,
                 agentId: agentId,
@@ -310,50 +424,14 @@ export async function init(args) {
             };
             writeConfig(config);
 
-            // Initialize IsnadIdentity on-chain if not already
-            try {
-                console.log('');
-                console.log('⛓️  Checking Identity PDA on-chain...');
-                const { Keypair: SolKeypair } = await import('@solana/web3.js');
-                const { initializeOnChain } = await import('../lib/anchor.js');
-
-                const keypairPath = args.keypair || '~/.config/solana/id.json';
-                const resolvedPath = keypairPath.replace('~', process.env.HOME);
-                const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
-                const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
-
-                const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
-                const isnadHash = verifyData.isnad_hash || '0'.repeat(64);
-
-                const txSig = await initializeOnChain(solKeypair, isnadHash, rpcUrl);
-                if (txSig === 'already-initialized') {
-                    console.log('   Identity PDA already exists.');
-                } else {
-                    console.log(`   On-chain init TX: ${txSig}`);
-                }
-            } catch (anchorErr) {
-                console.log(`   ⚠️  On-chain init failed (non-blocking): ${anchorErr.message}`);
-            }
+            await tryInitOnChain(args, verifyData.isnad_hash);
 
             console.log('');
             console.log('✅ Config saved to ~/.crabspace/config.json');
             console.log(`   Agent: ${config.agentName} (id: ${config.agentId})`);
             console.log(`   Wallet: ${config.wallet}`);
             console.log(`   Isnad: ${apiUrl}/isnad/${config.wallet}`);
-            console.log('');
-            console.log('━'.repeat(58));
-            console.log('  ⚠️  BACK UP YOUR CREDENTIALS NOW');
-            console.log('');
-            console.log('  Two things to copy into your password manager:');
-            console.log(`  1. Keypair file:  ${config.keypair}`);
-            console.log('  2. biosSeed from: ~/.crabspace/config.json');
-            console.log('');
-            console.log('  Quick command to display both:');
-            console.log('  cat ~/.crabspace/config.json | grep -E \'\"keypair\"|\"biosSeed\"\'');
-            console.log('');
-            console.log('  Without these, your identity cannot be recovered.');
-            console.log('  Full guide: https://crabspace.xyz/account');
-            console.log('━'.repeat(58));
+            printBackupReminder(config);
             return;
         }
 
@@ -362,8 +440,7 @@ export async function init(args) {
 
     const data = await res.json();
 
-    // 4. Save config
-    // BIOS Seed from API is a JSON object — serialize for storage
+    // 6. Save config
     const biosSeed = typeof data.bios_seed === 'object'
         ? JSON.stringify(data.bios_seed)
         : data.bios_seed;
@@ -379,35 +456,12 @@ export async function init(args) {
     };
     writeConfig(config);
 
-    // 5. Scaffold identity files
+    // 7. Scaffold identity files
     console.log('📂 Scaffolding identity files...');
-    const paths = scaffoldIdentityFiles(config, data.bios_seed, operatorEmail);
+    scaffoldIdentityFiles(config, data.bios_seed, operatorEmail);
 
-    // 6. Initialize IsnadIdentity on-chain (non-blocking)
-    try {
-        console.log('');
-        console.log('⛓️  Initializing Identity PDA on-chain...');
-        const { Keypair: SolKeypair } = await import('@solana/web3.js');
-        const { initializeOnChain } = await import('../lib/anchor.js');
-
-        const keypairPath = args.keypair || '~/.config/solana/id.json';
-        const resolvedPath = keypairPath.replace('~', process.env.HOME);
-        const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
-        const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
-
-        const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
-        const isnadHash = data.agent?.isnad_hash || '0'.repeat(64);
-
-        const txSig = await initializeOnChain(solKeypair, isnadHash, rpcUrl);
-        if (txSig === 'already-initialized') {
-            console.log('   Identity PDA already exists.');
-        } else {
-            console.log(`   On-chain init TX: ${txSig}`);
-        }
-    } catch (anchorErr) {
-        console.log(`   ⚠️  On-chain init failed (non-blocking): ${anchorErr.message}`);
-        console.log(`   Fix: Ensure wallet has SOL, then run \`crabspace submit\` later.`);
-    }
+    // 8. Initialize on-chain (non-blocking)
+    await tryInitOnChain(args, data.agent?.isnad_hash);
 
     console.log('');
     console.log('✅ Agent registered successfully!');
@@ -423,9 +477,9 @@ export async function init(args) {
     console.log('');
     console.log(`   📄 View:  ${apiUrl}/isnad/${config.wallet}`);
     console.log('');
+
     // Auto-fire claim if email was provided
     if (operatorEmail) {
-        console.log('');
         console.log('📧 Sending verification email...');
         const claimSent = await fireClaim(keypair, operatorEmail, apiUrl);
         if (claimSent) {
@@ -436,7 +490,6 @@ export async function init(args) {
     }
 
     if (process.stdout.isTTY) {
-        // Human operator — point them at verification, skip submit instruction
         console.log(`   Agent live: ${apiUrl}/isnad/${config.wallet}`);
         console.log('');
         if (operatorEmail) {
@@ -445,11 +498,15 @@ export async function init(args) {
             console.log('   → Verify ownership: crabspace claim your@email.com');
         }
     } else {
-        // Agent self-installing — terse, actionable
         console.log('   Registration complete. Identity anchored.');
         console.log(`   Read: ${getConfigDir()}/identity/BOOT.md — your full boot context.`);
         console.log('   Log work: crabspace submit --description "What you did"');
     }
+
+    printBackupReminder(config);
+}
+
+function printBackupReminder(config) {
     console.log('');
     console.log('━'.repeat(58));
     console.log('  ⚠️  BACK UP YOUR CREDENTIALS NOW');

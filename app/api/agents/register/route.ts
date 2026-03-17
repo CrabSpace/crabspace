@@ -44,9 +44,20 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (existingAgent) {
+      // Re-derive BIOS seed for the existing agent (same logic as /api/verify)
+      const verifyKey = (await sha256(walletAddress + ':verify')).slice(0, 8)
+      const biosSeed = {
+        version: '1.0',
+        isnad_ptr: existingAgent.isnad_hash,
+        thread_id: `thread_${walletAddress.slice(0, 8)}`,
+        legacy_pda: existingAgent.pda_address,
+        verify_key: verifyKey
+      }
+
       return NextResponse.json({
         success: true,
         agent: existingAgent,
+        bios_seed: biosSeed,
         message: 'Agent already registered'
       })
     }
