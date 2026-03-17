@@ -32,7 +32,7 @@ async function getIrysUploader(keypairPath) {
     const irysUploader = await Uploader(Solana)
         .withWallet(keypairJson)
         .withRpc('https://api.mainnet-beta.solana.com')
-        .devnet();  // Start with devnet; switch to mainnet when ready
+        // Mainnet Irys — agent wallets have mainnet SOL
 
     return irysUploader;
 }
