@@ -1,40 +1,69 @@
 /**
  * CrabSpace CLI — Config Manager
  * Reads/writes ~/.crabspace/config.json
+ *
+ * Supports test mode isolation:
+ *   CRABSPACE_ENV=test  → uses ~/.crabspace-test/
+ *   --env test          → call setEnvMode('test') before any config access
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
-const CONFIG_DIR = process.env.CRABSPACE_CONFIG_DIR
-    ? process.env.CRABSPACE_CONFIG_DIR.replace(/^~/, homedir())
-    : join(homedir(), '.crabspace');
-const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
-const JOURNAL_FILE = join(CONFIG_DIR, 'journal.md');
+// Mutable env mode — set early by index.js before any config access
+let _envMode = process.env.CRABSPACE_ENV || 'production';
+
+/**
+ * Set the environment mode. Call this BEFORE any config reads/writes.
+ * @param {'production' | 'test'} mode
+ */
+export function setEnvMode(mode) {
+    _envMode = mode;
+    process.env.CRABSPACE_ENV = mode;
+}
+
+/** Get the current environment mode. */
+export function getEnvMode() {
+    return _envMode;
+}
+
+/** Resolve the config directory based on environment mode. */
+function resolveConfigDir() {
+    // Explicit override always wins
+    if (process.env.CRABSPACE_CONFIG_DIR) {
+        return process.env.CRABSPACE_CONFIG_DIR.replace(/^~/, homedir());
+    }
+    if (_envMode === 'test') {
+        return join(homedir(), '.crabspace-test');
+    }
+    return join(homedir(), '.crabspace');
+}
 
 export function getConfigDir() {
-    return CONFIG_DIR;
+    return resolveConfigDir();
 }
 
 export function getJournalPath() {
-    return JOURNAL_FILE;
+    return join(resolveConfigDir(), 'journal.md');
 }
 
 export function configExists() {
-    return existsSync(CONFIG_FILE);
+    return existsSync(join(resolveConfigDir(), 'config.json'));
 }
 
 export function readConfig() {
-    if (!existsSync(CONFIG_FILE)) {
+    const configFile = join(resolveConfigDir(), 'config.json');
+    if (!existsSync(configFile)) {
         return null;
     }
-    return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8'));
+    return JSON.parse(readFileSync(configFile, 'utf-8'));
 }
 
 export function writeConfig(config) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
-    writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n');
+    const dir = resolveConfigDir();
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), JSON.stringify(config, null, 2) + '\n');
 }
 
 export function requireConfig() {
@@ -47,14 +76,16 @@ export function requireConfig() {
 }
 
 export function appendJournal(entry) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
+    const dir = resolveConfigDir();
+    const journalFile = join(dir, 'journal.md');
+    mkdirSync(dir, { recursive: true });
     const timestamp = new Date().toISOString();
     const line = `\n## ${timestamp}\n${entry}\n`;
 
-    if (existsSync(JOURNAL_FILE)) {
-        const existing = readFileSync(JOURNAL_FILE, 'utf-8');
-        writeFileSync(JOURNAL_FILE, existing + line);
+    if (existsSync(journalFile)) {
+        const existing = readFileSync(journalFile, 'utf-8');
+        writeFileSync(journalFile, existing + line);
     } else {
-        writeFileSync(JOURNAL_FILE, `# CrabSpace Work Journal\n${line}`);
+        writeFileSync(journalFile, `# CrabSpace Work Journal\n${line}`);
     }
 }

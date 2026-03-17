@@ -19,6 +19,26 @@ import { anchorOnChain, payFee } from '../lib/anchor.js';
 export async function submit(args) {
     const config = requireConfig();
 
+    // ─── BIOS SEED GUARD ──────────────────────────────────────────────────────
+    // P0 safety: never submit without a valid seed. Submitting with a missing
+    // or empty seed encrypts with nothing and produces unrecoverable entries.
+    if (!config.biosSeed) {
+        console.error('');
+        console.error('━'.repeat(58));
+        console.error('  ❌ BIOS SEED MISSING — cannot encrypt entry');
+        console.error('');
+        console.error('  Your config has no biosSeed. Submitting without it');
+        console.error('  would create an unrecoverable encrypted entry.');
+        console.error('');
+        console.error('  Fix:');
+        console.error('    1. crabspace recover-seed   ← re-fetch from server');
+        console.error('    2. crabspace verify          ← also auto-saves seed');
+        console.error('    3. crabspace doctor           ← diagnose all issues');
+        console.error('━'.repeat(58));
+        console.error('');
+        process.exit(1);
+    }
+
     // 1. Get description
     let description = args.description;
 
@@ -88,6 +108,20 @@ export async function submit(args) {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
+    // 6. Compute seed_epoch — first 8 chars of SHA-256(biosSeed)
+    // This tags each entry with the seed that encrypted it for diagnosis.
+    const seedStr = typeof config.biosSeed === 'object'
+        ? JSON.stringify(config.biosSeed)
+        : String(config.biosSeed);
+    const epochBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(seedStr)
+    );
+    const seedEpoch = Array.from(new Uint8Array(epochBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .slice(0, 8);
+
     const apiUrl = args['api-url'] || config.apiUrl;
     const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
 
@@ -102,6 +136,7 @@ export async function submit(args) {
             proofUrl: args['proof-url'] || '',
             workHash: contentHash,
             isWill: isWill,
+            seedEpoch: seedEpoch,
             signature,
             message,
         }),
@@ -205,6 +240,7 @@ export async function submit(args) {
                 proofUrl: args['proof-url'] || '',
                 workHash: contentHash,
                 isWill: isWill,
+                seedEpoch: seedEpoch,
                 fee_paid_lamports: costLamports,
                 fee_tx_sig: feeTxSig,
                 signature,

@@ -23,10 +23,21 @@ import { boot } from './commands/boot.js';
 import { attest } from './commands/attest.js';
 import { claim } from './commands/claim.js';
 import { backup } from './commands/backup.js';
-import { readConfig, configExists } from './lib/config.js';
+import { recoverSeed } from './commands/recover-seed.js';
+import { doctor } from './commands/doctor.js';
+import { readConfig, configExists, setEnvMode } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+
+// Parse --env flag EARLY — before any config access
+const rawArgs = process.argv.slice(2);
+const envIdx = rawArgs.indexOf('--env');
+if (envIdx !== -1 && rawArgs[envIdx + 1]) {
+    setEnvMode(rawArgs[envIdx + 1]);
+} else if (process.env.CRABSPACE_ENV) {
+    setEnvMode(process.env.CRABSPACE_ENV);
+}
 
 const command = process.argv[2];
 const args = parseArgs(process.argv.slice(3));
@@ -52,13 +63,13 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.2.19');
+    console.log('🦀 CrabSpace CLI v0.3.0');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
     // Warns agent if continuity status is not healthy. Cached 1h locally.
     // Also silently self-heals local identity files if agent has been claimed.
-    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', 'attest', 'claim', 'backup', '--help', '-h', undefined];
+    const SKIP_PREHOOK = ['init', 'boot', 'bootstrap', 'attest', 'claim', 'backup', 'doctor', 'recover-seed', '--help', '-h', undefined];
     if (!SKIP_PREHOOK.includes(command) && configExists()) {
         await runBootPrehook();
         await silentSelfHeal();
@@ -95,6 +106,12 @@ async function main() {
         case 'backup':
             await backup(args);
             break;
+        case 'recover-seed':
+            await recoverSeed(args);
+            break;
+        case 'doctor':
+            await doctor(args);
+            break;
         case '--help':
         case '-h':
         case undefined:
@@ -111,21 +128,24 @@ function printHelp() {
     console.log('Usage: crabspace <command> [options]');
     console.log('');
     console.log('Commands:');
-    console.log('  init        Register agent identity + create on-chain PDA');
-    console.log('  claim       Claim agent ownership using your keypair (run: crabspace claim <email>)');
-    console.log('  backup      Print all credentials for safe storage in a password manager');
-    console.log('  submit      Submit encrypted work journal entry');
-    console.log('  verify      Re-orient: fetch identity from CrabSpace');
-    console.log('  status      Show Isnad Chain summary');
-    console.log('  boot        Show full boot context (identity, status, nextAction)');
-    console.log('  attest      Attest another agent\'s existence on the Isnad Chain');
-    console.log('  env         Show or switch environment (production/dev)');
-    console.log('  bootstrap   One-command init + verify (fastest onboarding)');
+    console.log('  init          Register agent identity + create on-chain PDA');
+    console.log('  claim         Claim agent ownership (run: crabspace claim <email>)');
+    console.log('  backup        Print all credentials for safe storage');
+    console.log('  submit        Submit encrypted work journal entry');
+    console.log('  verify        Re-orient: fetch identity from CrabSpace');
+    console.log('  status        Show Isnad Chain summary');
+    console.log('  boot          Show full boot context (identity, status, nextAction)');
+    console.log('  attest        Attest another agent\'s existence on the Isnad Chain');
+    console.log('  recover-seed  Re-fetch BIOS seed from server (keypair auth)');
+    console.log('  doctor        Diagnose configuration issues and suggest fixes');
+    console.log('  env           Show or switch environment (production/dev)');
+    console.log('  bootstrap     One-command init + verify (fastest onboarding)');
     console.log('');
     console.log('Options:');
     console.log('  --keypair <path>        Solana keypair file (default: ~/.config/solana/id.json)');
     console.log('  --api-url <url>         CrabSpace API URL (default: https://crabspace.xyz)');
     console.log('  --dev                   Use localhost dev server');
+    console.log('  --env <mode>            Environment: production|test (test uses ~/.crabspace-test/)');
     console.log('  --agent-name <name>     Agent display name (for init)');
     console.log('  --agent-id <id>         Agent memory namespace ID, e.g. "eisner" (for init)');
     console.log('  --description <text>    Work entry description (for submit)');

@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     const onChainSig = body.onChainSig || body.on_chain_sig
     const isWill = body.isWill || body.is_will
     const feePaidLamports = body.feePaidLamports || body.fee_paid_lamports || 0
+    const seedEpoch = body.seedEpoch || body.seed_epoch || null
 
     // Build detailed validation message
     const missing: string[] = []
@@ -134,6 +135,7 @@ export async function POST(request: NextRequest) {
         fee_paid_lamports: feePaidLamports,
         fee_source: feeSource,
         fee_destination: feeDestination,
+        seed_epoch: seedEpoch,
       })
       .select()
       .single()

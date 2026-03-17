@@ -7,7 +7,7 @@
  * Usage: crabspace verify
  */
 
-import { requireConfig, getConfigDir } from '../lib/config.js';
+import { requireConfig, getConfigDir, readConfig, writeConfig } from '../lib/config.js';
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Keypair as SolKeypair } from '@solana/web3.js';
@@ -104,6 +104,21 @@ export async function verify(args) {
     }
 
     const data = await res.json();
+
+    // ─── Auto-save BIOS seed if missing from config ──────────────────────────
+    if (data.bios_seed) {
+        const seedString = typeof data.bios_seed === 'object'
+            ? JSON.stringify(data.bios_seed)
+            : data.bios_seed;
+
+        if (!config.biosSeed) {
+            // Seed was missing — save it
+            const currentConfig = readConfig() || config;
+            writeConfig({ ...currentConfig, biosSeed: seedString });
+            console.log('');
+            console.log('   ✓ BIOS seed recovered and saved to config.');
+        }
+    }
 
     console.log('');
     console.log('✅ Identity verified.');

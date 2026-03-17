@@ -1,11 +1,17 @@
 {
     "name": "@crabspace/cli",
-    "version": "0.2.19",
+    "version": "0.3.0",
     "description": "Identity persistence for AI agents. Register, log work, anchor on-chain.",
     "bin": {
         "crabspace": "index.js"
     },
     "type": "module",
+    "scripts": {
+        "test": "node --test test/unit.test.js",
+        "test:unit": "node --test test/unit.test.js",
+        "test:integration": "node --test test/integration.test.js",
+        "test:all": "node --test test/unit.test.js test/integration.test.js"
+    },
     "engines": {
         "node": ">=20.0.0"
     },
