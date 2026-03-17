@@ -15,6 +15,7 @@ import { loadKeypair, signForAction } from '../lib/sign.js';
 import { encryptData } from '../lib/encrypt.js';
 import { requireConfig, appendJournal } from '../lib/config.js';
 import { anchorOnChain, payFee } from '../lib/anchor.js';
+import { uploadToArweave } from '../lib/arweave.js';
 
 export async function submit(args) {
     const config = requireConfig();
@@ -122,21 +123,46 @@ export async function submit(args) {
         .join('')
         .slice(0, 8);
 
+    // 7. Upload encrypted blob to Arweave (permanent storage)
+    console.log('📦 Uploading to Arweave...');
+    let arweaveTxId = null;
+    let arweaveUploadFailed = false;
+    try {
+        const arweaveResult = await uploadToArweave(
+            encrypted,
+            {
+                agentWallet: keypair.wallet,
+                seedEpoch: seedEpoch,
+                entryType: args.type || 'self',
+            },
+            resolvedPath
+        );
+        arweaveTxId = arweaveResult.txId;
+        console.log(`   ✓ Arweave: ${arweaveTxId.slice(0, 12)}... (${arweaveResult.size} bytes)`);
+    } catch (arweaveErr) {
+        // Upload failed — let the server try with treasury for genesis entries
+        arweaveUploadFailed = true;
+        console.log(`   ⚠  Agent upload failed — server will attempt treasury upload`);
+    }
+
     const apiUrl = args['api-url'] || config.apiUrl;
     const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
 
     // POST to API — handle 402 auto-pay transparently
+    // If agent Arweave upload failed, send encrypted blob for server-side treasury upload
     let res = await fetch(`${apiUrl}/api/work/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             agentWallet: keypair.wallet,
             projectName: projectName,
-            description: encrypted,
+            arweaveTxId: arweaveTxId,
+            encryptedBlob: arweaveUploadFailed ? encrypted : undefined,
             proofUrl: args['proof-url'] || '',
             workHash: contentHash,
             isWill: isWill,
             seedEpoch: seedEpoch,
+            entryType: args.type || 'self',
             signature,
             message,
         }),

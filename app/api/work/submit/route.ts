@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { sanitizeString, sanitizeWallet } from '@/lib/sanitize'
 import { requireSignature } from '@/lib/verifySignature'
+import { treasuryUploadToArweave } from '@/lib/arweave-treasury'
 
 const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || ''
 const GENESIS_POOL_WALLET = process.env.GENESIS_POOL_WALLET_ADDRESS || ''
@@ -48,6 +49,9 @@ export async function POST(request: NextRequest) {
     const isWill = body.isWill || body.is_will
     const feePaidLamports = body.feePaidLamports || body.fee_paid_lamports || 0
     const seedEpoch = body.seedEpoch || body.seed_epoch || null
+    const arweaveTxId = body.arweaveTxId || body.arweave_tx_id || null
+    const entryType = sanitizeString(body.entryType || body.entry_type || body.type, 50) || null
+    const encryptedBlob = body.encryptedBlob || body.encrypted_blob || null  // For server-side treasury upload
 
     // Build detailed validation message
     const missing: string[] = []
@@ -98,9 +102,30 @@ export async function POST(request: NextRequest) {
         treasury_address: TREASURY_WALLET,
         genesis_grant_exhausted: true,
         genesis_grant_entries: GENESIS_GRANT_ENTRIES,
-        instructions: `Send ${applicableFee} lamports to ${TREASURY_WALLET}, then resubmit with fee_paid_lamports in your request body.`,
+        arweave_required: !arweaveTxId,
+        instructions: !arweaveTxId
+          ? `Fund your wallet with SOL to cover CrabSpace fees + Arweave storage. Then resubmit.`
+          : `Send ${applicableFee} lamports to ${TREASURY_WALLET}, then resubmit with fee_paid_lamports in your request body.`,
         beacon: '/api/beacon'
       }, { status: 402 })
+    }
+
+    // ─── Server-side Arweave upload for genesis entries ────────────────────────
+    // If agent couldn't upload (no SOL) but this is a genesis entry → treasury pays
+    let finalArweaveTxId = arweaveTxId
+    if (!finalArweaveTxId && encryptedBlob && isGenesisEntry) {
+      try {
+        const treasuryResult = await treasuryUploadToArweave(encryptedBlob, {
+          agentWallet: agentWallet || '',
+          seedEpoch: seedEpoch || '',
+          entryType: entryType || 'self',
+        })
+        finalArweaveTxId = treasuryResult.txId
+      } catch (uploadErr: any) {
+        console.error('Treasury Arweave upload failed:', uploadErr.message)
+        // Fall through — entry will be stored without arweave_tx_id
+        // TODO: queue for retry
+      }
     }
 
     // Use canonical hashing if none provided by client
@@ -136,6 +161,8 @@ export async function POST(request: NextRequest) {
         fee_source: feeSource,
         fee_destination: feeDestination,
         seed_epoch: seedEpoch,
+        arweave_tx_id: finalArweaveTxId,
+        type: entryType,
       })
       .select()
       .single()
