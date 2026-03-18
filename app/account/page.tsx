@@ -782,24 +782,39 @@ Your past work is recorded. You are not starting from scratch.` : ''
                             </div>
 
                             <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                                Your BIOS Seed is your agent&apos;s master encryption key. Every journal entry and
-                                will is encrypted with it before leaving the browser. <strong className="text-white">Download or copy it now
-                                    and keep it somewhere safe.</strong> You&apos;ll need it to decrypt your agent&apos;s work history.
+                                This is your agent&apos;s encryption key. Every journal entry is encrypted with it before
+                                storage on Arweave. <strong className="text-white">If lost, your entries cannot be decrypted.</strong>
                             </p>
 
                             {/* Seed display */}
                             <div className="bg-slate-800/50 border border-border-dark rounded-lg p-4">
+                                {/* Seed Epoch — always visible */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="text-[10px] text-text-muted-dark uppercase tracking-wider font-bold mb-1">Seed Epoch</p>
+                                        <p className="font-mono text-lg font-bold text-primary">{biosSeed?.verify_key || '—'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCopy(biosSeed?.verify_key || '', 'epoch')}
+                                        className="text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg"
+                                    >
+                                        {copied === 'epoch' ? '✓ Copied' : '📋 Copy Epoch'}
+                                    </button>
+                                </div>
+
+                                {/* Full seed toggle */}
                                 {showSeed ? (
-                                    <div className="space-y-3">
-                                        <pre className="text-xs mono text-slate-300 overflow-x-auto whitespace-pre-wrap break-all">
+                                    <div className="space-y-3 pt-3 border-t border-border-dark">
+                                        <p className="text-[10px] text-text-muted-dark uppercase tracking-wider font-bold">Full BIOS Seed</p>
+                                        <pre className="text-xs mono text-slate-300 overflow-x-auto whitespace-pre-wrap break-all bg-[#0d1117] rounded-lg p-3 border border-border-dark">
                                             {JSON.stringify(biosSeed, null, 2)}
                                         </pre>
-                                        <div className="flex items-center gap-3 pt-2 border-t border-border-dark">
+                                        <div className="flex items-center gap-3">
                                             <button
                                                 onClick={() => handleCopy(JSON.stringify(biosSeed, null, 2), 'seed')}
                                                 className="text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors"
                                             >
-                                                {copied === 'seed' ? '✓ Copied' : '📋 Copy'}
+                                                {copied === 'seed' ? '✓ Copied' : '📋 Copy Full Seed'}
                                             </button>
                                             <button
                                                 onClick={handleDownloadSeed}
@@ -816,19 +831,12 @@ Your past work is recorded. You are not starting from scratch.` : ''
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-2xl">🔒</span>
-                                            <div>
-                                                <p className="text-sm font-medium text-slate-300">BIOS Seed is hidden</p>
-                                                <p className="text-[10px] text-text-muted-dark">Click reveal to view your encryption key</p>
-                                            </div>
-                                        </div>
+                                    <div className="pt-3 border-t border-border-dark">
                                         <button
                                             onClick={() => setShowSeed(true)}
-                                            className="bg-amber-500 hover:bg-amber-600 text-amber-950 text-[10px] font-bold uppercase px-4 py-2 rounded-lg transition-colors"
+                                            className="text-[10px] font-bold uppercase tracking-wider text-text-muted-dark hover:text-white transition-colors"
                                         >
-                                            🔓 Reveal Seed
+                                            🔓 Show Full Seed
                                         </button>
                                     </div>
                                 )}
