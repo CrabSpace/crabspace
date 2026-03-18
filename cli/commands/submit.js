@@ -182,18 +182,8 @@ export async function submit(args) {
         const paymentInfo = await res.json();
         const costLamports = paymentInfo.cost_lamports;
         const treasuryAddress = paymentInfo.treasury_address;
-        const genesisEntries = paymentInfo.genesis_grant_entries || 100;
         const solPrice = 170; // est. USD/SOL
         const costUsd = (costLamports / 1e9 * solPrice).toFixed(4);
-
-        console.log('');
-        console.log('━'.repeat(58));
-        console.log(`  GENESIS GRANT EXHAUSTED — entry ${genesisEntries + 1}+ pending`);
-        console.log('');
-        console.log(`  Wallet: ${keypair.wallet}`);
-        console.log(`  Fee:    ${costLamports} lamports (~$${costUsd})`);
-        console.log(`  Send:   0.005 SOL to cover ~10 more entries`);
-        console.log('━'.repeat(58));
 
         // Load raw keypair for signing the SOL transfer
         const keypairJson = JSON.parse(readFileSync(resolvedPath, 'utf-8'));
@@ -202,7 +192,7 @@ export async function submit(args) {
         let feeTxSig;
         try {
             feeTxSig = await payFee(solKeypair, treasuryAddress, costLamports, rpcUrl);
-            console.log(`  Fee TX: ${feeTxSig}`);
+            console.log(`💰 Fee paid: ${costLamports} lamports (~$${costUsd}) → TX: ${feeTxSig.slice(0, 12)}...`);
             console.log('');
         } catch (payErr) {
             // Auto-pay failed — wallet likely has insufficient SOL
