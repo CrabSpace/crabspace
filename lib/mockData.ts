@@ -17,6 +17,7 @@ export interface IsnadEntry {
     entryType: EntryType
     encryptedData?: string
     onChainSig?: string
+    tags?: string[]
     // Will-specific fields
     transitionReason?: string
     whatToPreserve?: string
