@@ -53,6 +53,16 @@ export async function POST(request: NextRequest) {
     const entryType = sanitizeString(body.entryType || body.entry_type || body.type, 50) || null
     const encryptedBlob = body.encryptedBlob || body.encrypted_blob || null  // For server-side treasury upload
 
+    // Parse tags: accept string[] or comma-separated string
+    const rawTags = body.tags || []
+    const tags: string[] = (Array.isArray(rawTags)
+      ? rawTags
+      : typeof rawTags === 'string' ? rawTags.split(',') : []
+    )
+      .map((t: string) => t.trim().toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+      .filter((t: string) => t.length > 0 && t.length <= 50)
+      .slice(0, 20)
+
     // Build detailed validation message
     const missing: string[] = []
     if (!agentWallet) missing.push('agentWallet (or agent_wallet)')
@@ -163,6 +173,7 @@ export async function POST(request: NextRequest) {
         seed_epoch: seedEpoch,
         arweave_tx_id: finalArweaveTxId,
         type: entryType,
+        ...(tags.length > 0 ? { tags } : {}),
       })
       .select()
       .single()

@@ -155,6 +155,7 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                         entryHash: e.work_hash || '0x' + Math.random().toString(16).slice(2, 66),
                         agentWallet: data.agent.wallet_address,
                         entryType: parsedType as EntryType,
+                        tags: e.tags || [],
                     }
                 })
 
@@ -498,6 +499,20 @@ export default function IsnadChainPage({ params }: { params: Promise<{ wallet: s
                                         </a>
                                     )}
                                 </div>
+
+                                {/* Tags */}
+                                {selectedEntry.tags && selectedEntry.tags.length > 0 && (
+                                    <div className="pt-4 border-t border-slate-200 dark:border-border-dark">
+                                        <div className="text-[10px] text-text-muted-dark uppercase tracking-wider font-bold mb-2">Tags</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {selectedEntry.tags.map((tag: string) => (
+                                                <span key={tag} className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-medium">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

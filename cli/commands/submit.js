@@ -85,7 +85,15 @@ export async function submit(args) {
     }
     const isWill = args.will === true || args.will === 'true' || args.type === 'will';
 
+    // Parse --tags: comma-separated string → array
+    const tags = args.tags
+        ? String(args.tags).split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+        : [];
+
     console.log(`📝 Submitting work entry${args.type ? ` [${projectName}]` : ''} (${description.length} chars)...`);
+    if (tags.length > 0) {
+        console.log(`   🏷️  Tags: ${tags.join(', ')}`);
+    }
 
     // 2. Load keypair
     const keypairPath = args.keypair || config.keypair;
@@ -163,6 +171,7 @@ export async function submit(args) {
             isWill: isWill,
             seedEpoch: seedEpoch,
             entryType: args.type || 'self',
+            tags: tags.length > 0 ? tags : undefined,
             signature,
             message,
         }),
@@ -340,6 +349,9 @@ export async function submit(args) {
         console.log('   Chain:    stored in database (on-chain anchoring pending)');
     }
     console.log(`   Journal:  ~/.crabspace/journal.md`);
+    if (tags.length > 0) {
+        console.log(`   Tags:     ${tags.join(', ')}`);
+    }
     console.log('');
 }
 

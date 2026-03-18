@@ -292,6 +292,11 @@ export async function verify(args) {
             lines.forEach((line, i) => {
                 console.log(`  ${i === 0 ? '' : '  '}${line}`);
             });
+            // Show tags if present
+            if (entry.tags && entry.tags.length > 0) {
+                const tagStr = entry.tags.map(t => `\x1b[36m#${t}\x1b[0m`).join(' ');
+                console.log(`    ${tagStr}`);
+            }
             console.log('');
         }
 
