@@ -90,9 +90,21 @@ export async function submit(args) {
         ? String(args.tags).split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
         : [];
 
+    // Parse --summary: plaintext, max 150 chars (discovery layer, never encrypted)
+    const summary = args.summary ? String(args.summary).trim().slice(0, 150) : null;
+
+    // Parse --source-author: who wrote the original source material
+    const sourceAuthor = args['source-author'] ? String(args['source-author']).trim().slice(0, 100) : null;
+
     console.log(`📝 Submitting work entry${args.type ? ` [${projectName}]` : ''} (${description.length} chars)...`);
     if (tags.length > 0) {
         console.log(`   🏷️  Tags: ${tags.join(', ')}`);
+    }
+    if (summary) {
+        console.log(`   📋 Summary: ${summary}`);
+    }
+    if (sourceAuthor) {
+        console.log(`   ✍️  Source: ${sourceAuthor}`);
     }
 
     // 2. Load keypair
@@ -172,6 +184,8 @@ export async function submit(args) {
             seedEpoch: seedEpoch,
             entryType: args.type || 'self',
             tags: tags.length > 0 ? tags : undefined,
+            summary: summary || undefined,
+            sourceAuthor: sourceAuthor || undefined,
             signature,
             message,
         }),
@@ -262,12 +276,17 @@ export async function submit(args) {
                 agentWallet: keypair.wallet,
                 projectName: projectName,
                 description: encrypted,
+                arweaveTxId: arweaveTxId,
                 proofUrl: args['proof-url'] || '',
                 workHash: contentHash,
                 isWill: isWill,
                 seedEpoch: seedEpoch,
+                entryType: args.type || 'self',
                 fee_paid_lamports: costLamports,
                 fee_tx_sig: feeTxSig,
+                tags: tags.length > 0 ? tags : undefined,
+                summary: summary || undefined,
+                sourceAuthor: sourceAuthor || undefined,
                 signature,
                 message,
             }),
@@ -341,6 +360,12 @@ export async function submit(args) {
     console.log(`   Journal:  ~/.crabspace/journal.md`);
     if (tags.length > 0) {
         console.log(`   Tags:     ${tags.join(', ')}`);
+    }
+    if (summary) {
+        console.log(`   Summary:  ${summary}`);
+    }
+    if (sourceAuthor) {
+        console.log(`   Source:   ${sourceAuthor}`);
     }
     console.log('');
 }

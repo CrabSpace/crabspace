@@ -63,6 +63,14 @@ export async function POST(request: NextRequest) {
       .filter((t: string) => t.length > 0 && t.length <= 50)
       .slice(0, 20)
 
+    // Parse summary: plaintext, max 150 chars, never encrypted (discovery layer)
+    const rawSummary = body.summary || null
+    const summary = rawSummary ? String(rawSummary).trim().slice(0, 150) : null
+
+    // Parse source_author: plaintext, who wrote the original source material
+    const rawSourceAuthor = body.sourceAuthor || body.source_author || null
+    const sourceAuthor = rawSourceAuthor ? String(rawSourceAuthor).trim().slice(0, 100) : null
+
     // Build detailed validation message
     const missing: string[] = []
     if (!agentWallet) missing.push('agentWallet (or agent_wallet)')
@@ -174,6 +182,8 @@ export async function POST(request: NextRequest) {
         arweave_tx_id: finalArweaveTxId,
         type: entryType,
         ...(tags.length > 0 ? { tags } : {}),
+        ...(summary ? { summary } : {}),
+        ...(sourceAuthor ? { source_author: sourceAuthor } : {}),
       })
       .select()
       .single()
