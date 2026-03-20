@@ -198,7 +198,7 @@ async function decryptEntry(encryptedBase64: string, biosSeed: string): Promise<
 
   const baseKey = await crypto.subtle.importKey(
     'raw',
-    keyData,
+    keyData.buffer as ArrayBuffer,
     { name: 'PBKDF2' },
     false,
     ['deriveKey']
@@ -207,7 +207,7 @@ async function decryptEntry(encryptedBase64: string, biosSeed: string): Promise<
   const aesKey = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt.buffer,
+      salt: salt.buffer as ArrayBuffer,
       iterations: 100000,
       hash: 'SHA-256',
     },
