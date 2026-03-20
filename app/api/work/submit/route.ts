@@ -71,6 +71,26 @@ export async function POST(request: NextRequest) {
     const rawSourceAuthor = body.sourceAuthor || body.source_author || null
     const sourceAuthor = rawSourceAuthor ? String(rawSourceAuthor).trim().slice(0, 100) : null
 
+    // Parse private_tags: owner-only vault retrieval tags (no length cap on count)
+    const rawPrivateTags = body.privateTags || body.private_tags || []
+    const privateTags: string[] = (Array.isArray(rawPrivateTags)
+      ? rawPrivateTags
+      : typeof rawPrivateTags === 'string' ? rawPrivateTags.split(',') : []
+    )
+      .map((t: string) => t.trim().toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+      .filter((t: string) => t.length > 0)
+
+    // Parse private_summary: unlimited length, detailed vault context
+    const rawPrivateSummary = body.privateSummary || body.private_summary || null
+    const privateSummary = rawPrivateSummary ? String(rawPrivateSummary).trim() : null
+
+    // Parse cog_eligible: controls marketplace visibility (default false)
+    const cogEligible = body.cogEligible === true || body.cog_eligible === true || false
+
+    // Parse source_file: original filename for provenance (basename only, path rots)
+    const rawSourceFile = body.sourceFile || body.source_file || null
+    const sourceFile = rawSourceFile ? String(rawSourceFile).trim().slice(0, 255) : null
+
     // Build detailed validation message
     const missing: string[] = []
     if (!agentWallet) missing.push('agentWallet (or agent_wallet)')
@@ -184,6 +204,10 @@ export async function POST(request: NextRequest) {
         ...(tags.length > 0 ? { tags } : {}),
         ...(summary ? { summary } : {}),
         ...(sourceAuthor ? { source_author: sourceAuthor } : {}),
+        ...(privateTags.length > 0 ? { private_tags: privateTags } : {}),
+        ...(privateSummary ? { private_summary: privateSummary } : {}),
+        ...(cogEligible ? { cog_eligible: cogEligible } : {}),
+        ...(sourceFile ? { source_file: sourceFile } : {}),
       })
       .select()
       .single()

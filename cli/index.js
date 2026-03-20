@@ -25,6 +25,7 @@ import { claim } from './commands/claim.js';
 import { backup } from './commands/backup.js';
 import { recoverSeed } from './commands/recover-seed.js';
 import { doctor } from './commands/doctor.js';
+import { search } from './commands/search.js';
 import { readConfig, configExists, setEnvMode } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -63,7 +64,7 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.3.5');
+    console.log('🦀 CrabSpace CLI v0.4.0');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
@@ -111,6 +112,9 @@ async function main() {
             break;
         case 'doctor':
             await doctor(args);
+            break;
+        case 'search':
+            await search(args);
             break;
         case '--help':
         case '-h':

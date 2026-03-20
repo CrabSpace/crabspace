@@ -96,15 +96,41 @@ export async function submit(args) {
     // Parse --source-author: who wrote the original source material
     const sourceAuthor = args['source-author'] ? String(args['source-author']).trim().slice(0, 100) : null;
 
+    // Parse --private-tags: owner-only vault retrieval tags (no count cap)
+    const privateTags = args['private-tags']
+        ? String(args['private-tags']).split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+        : [];
+
+    // Parse --private-summary: detailed vault context (unlimited length)
+    const privateSummary = args['private-summary'] ? String(args['private-summary']).trim() : null;
+
+    // Parse --cog-eligible: marketplace visibility toggle
+    const cogEligible = args['cog-eligible'] === true || args['cog-eligible'] === 'true';
+
+    // Parse --source-file: original filename for provenance (basename only)
+    const sourceFile = args['source-file'] ? String(args['source-file']).trim().slice(0, 255) : null;
+
     console.log(`📝 Submitting work entry${args.type ? ` [${projectName}]` : ''} (${description.length} chars)...`);
     if (tags.length > 0) {
         console.log(`   🏷️  Tags: ${tags.join(', ')}`);
     }
+    if (privateTags.length > 0) {
+        console.log(`   🔒 Private tags: ${privateTags.join(', ')}`);
+    }
     if (summary) {
         console.log(`   📋 Summary: ${summary}`);
     }
+    if (privateSummary) {
+        console.log(`   🔐 Private summary: ${privateSummary.slice(0, 80)}${privateSummary.length > 80 ? '...' : ''}`);
+    }
     if (sourceAuthor) {
         console.log(`   ✍️  Source: ${sourceAuthor}`);
+    }
+    if (cogEligible) {
+        console.log(`   📦 COG eligible: yes`);
+    }
+    if (sourceFile) {
+        console.log(`   📄 Source file: ${sourceFile}`);
     }
 
     // 2. Load keypair
@@ -186,6 +212,10 @@ export async function submit(args) {
             tags: tags.length > 0 ? tags : undefined,
             summary: summary || undefined,
             sourceAuthor: sourceAuthor || undefined,
+            privateTags: privateTags.length > 0 ? privateTags : undefined,
+            privateSummary: privateSummary || undefined,
+            cogEligible: cogEligible || undefined,
+            sourceFile: sourceFile || undefined,
             signature,
             message,
         }),
