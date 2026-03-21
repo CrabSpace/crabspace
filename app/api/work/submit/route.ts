@@ -130,12 +130,14 @@ export async function POST(request: NextRequest) {
 
     // 💳 HTTP 402: Payment Required — agent-native economic signal
     // If genesis grant is exhausted and no fee was provided, return 402 with full cost breakdown
-    if (!isGenesisEntry && (!feePaidLamports || feePaidLamports < applicableFee)) {
+    // Skip entirely when fee is 0 (zero-fee mode for vault testing)
+    if (!isGenesisEntry && applicableFee > 0 && (!feePaidLamports || feePaidLamports < applicableFee)) {
+      const costUsd = isWill ? 0.25 : (applicableFee / 5882353) // ~SOL price $140
       return NextResponse.json({
         error: 'Payment Required',
         http_status: 402,
         cost_lamports: applicableFee,
-        cost_usd: isWill ? 0.25 : 0.01,
+        cost_usd: costUsd,
         entry_type: isWill ? 'will_succession' : 'work_entry',
         treasury_address: TREASURY_WALLET,
         genesis_grant_exhausted: true,
