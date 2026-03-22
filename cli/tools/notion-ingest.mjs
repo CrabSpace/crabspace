@@ -60,16 +60,25 @@ function contentHash(title, content) {
 
 /**
  * Check if an entry already exists in the vault by searching for its source file.
+ * 
+ * IMPORTANT: We search by private-tags (notion-import) and then check if the
+ * source filename appears in the actual result entries (lines starting with 📄).
+ * We do NOT use --keyword because the CLI echoes the keyword back in the output,
+ * which caused false positives (every file appeared to already exist).
  */
 function checkForExistingEntry(sourceFile) {
     try {
         const result = execSync(
-            `crabspace search --keyword "${sourceFile.replace(/"/g, '\\"').slice(0, 50)}" 2>&1`,
+            `crabspace search --private-tags notion-import 2>&1`,
             { timeout: 15000, encoding: 'utf-8' }
         );
-        // If the source file appears in search results, it's a duplicate
-        if (result.includes(sourceFile.slice(0, 40))) {
-            return true;
+        // Only check actual source file reference lines (📄 prefix)
+        // This avoids matching the CLI's own echo of search parameters
+        const resultLines = result.split('\n').filter(l => l.includes('📄'));
+        for (const line of resultLines) {
+            if (line.includes(sourceFile.slice(0, 40))) {
+                return true;
+            }
         }
     } catch (e) {
         // Search failed — don't block, proceed with caution
