@@ -162,8 +162,8 @@ export async function verify(args) {
     // ─── --recent: decrypt and print last N entries ───────────────────────────
     const recentRaw = args.recent;
     if (recentRaw !== undefined) {
-        const n = recentRaw === true || recentRaw === '' ? 7 : parseInt(recentRaw, 10);
-        const limit = isNaN(n) ? 7 : Math.max(1, n);
+        const n = recentRaw === true || recentRaw === '' ? 3 : parseInt(recentRaw, 10);
+        const limit = isNaN(n) ? 3 : Math.max(1, n);
 
         console.log(`📋 Fetching your last ${limit} entries...`);
         console.log('');
@@ -274,6 +274,13 @@ export async function verify(args) {
             const sourceBadge = `\x1b[90m[${source}]\x1b[0m`;
 
             // Wrap description at 54 chars for clean terminal output
+            // Auto-truncate large entries (>3000 chars) to save context
+            const MAX_ENTRY_CHARS = 3000;
+            if (description.length > MAX_ENTRY_CHARS) {
+                description = description.slice(0, MAX_ENTRY_CHARS)
+                    + `\n\n... [truncated at ${MAX_ENTRY_CHARS} chars, full: ${description.length} chars]`
+                    + `\n    Use: crabspace read --tags <concept> for full content`;
+            }
             const maxWidth = 54;
             const words = description.split(' ');
             const lines = [];

@@ -187,11 +187,14 @@ export async function read(args) {
         if (content) {
             console.log('');
 
-            // If --truncate is set, show first N characters
-            const truncate = args.truncate ? parseInt(args.truncate) : 0;
+            // Default truncate to 2000 chars to prevent context exhaustion.
+            // Use --full to see entire document, or --truncate N for custom limit.
+            const defaultTruncate = args.full ? 0 : 2000;
+            const truncate = args.truncate ? parseInt(args.truncate) : defaultTruncate;
             if (truncate > 0 && content.length > truncate) {
                 console.log(content.slice(0, truncate));
                 console.log(`\n      ... [truncated at ${truncate} chars, full: ${content.length} chars]`);
+                console.log(`      Use --full to see entire document, or --truncate N for custom limit.`);
             } else {
                 console.log(content);
             }
