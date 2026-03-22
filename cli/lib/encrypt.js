@@ -61,7 +61,17 @@ export async function encryptData(cleartext, seed) {
     combined.set(iv, salt.length);
     combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
 
-    return btoa(String.fromCharCode(...combined));
+    // Convert Uint8Array to base64 without spread operator.
+    // String.fromCharCode(...combined) causes stack overflow on large inputs
+    // because it puts one argument per byte on the call stack (~160K args for 160KB).
+    // Process in 8KB chunks instead.
+    let binaryStr = '';
+    const CHUNK = 8192;
+    for (let i = 0; i < combined.length; i += CHUNK) {
+        const slice = combined.subarray(i, Math.min(i + CHUNK, combined.length));
+        binaryStr += String.fromCharCode.apply(null, slice);
+    }
+    return btoa(binaryStr);
 }
 
 /**
