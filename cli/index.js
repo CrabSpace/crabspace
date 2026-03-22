@@ -26,6 +26,7 @@ import { backup } from './commands/backup.js';
 import { recoverSeed } from './commands/recover-seed.js';
 import { doctor } from './commands/doctor.js';
 import { search } from './commands/search.js';
+import { read } from './commands/read.js';
 import { readConfig, configExists, setEnvMode } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -116,6 +117,9 @@ async function main() {
         case 'search':
             await search(args);
             break;
+        case 'read':
+            await read(args);
+            break;
         case '--help':
         case '-h':
         case undefined:
@@ -142,6 +146,8 @@ function printHelp() {
     console.log('  attest        Attest another agent\'s existence on the Isnad Chain');
     console.log('  recover-seed  Re-fetch BIOS seed from server (keypair auth)');
     console.log('  doctor        Diagnose configuration issues and suggest fixes');
+    console.log('  search        Search vault by tags or keyword (metadata only)');
+    console.log('  read          Search + decrypt: retrieve full content from vault');
     console.log('  env           Show or switch environment (production/dev)');
     console.log('  bootstrap     One-command init + verify (fastest onboarding)');
     console.log('');

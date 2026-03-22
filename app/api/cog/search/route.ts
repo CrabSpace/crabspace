@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
         .from('work_journal')
         .select(`
           id, project_name, tags, summary, source_author, source_file,
-          type, created_at, cog_eligible,
+          type, created_at, cog_eligible, arweave_tx_id, description,
           ${authenticatedWallet ? 'private_tags, private_summary,' : ''}
           agents!inner(wallet_address, name)
         `)
@@ -228,6 +228,8 @@ export async function GET(request: NextRequest) {
         source_file: e.source_file,
         type: e.type,
         cog_eligible: e.cog_eligible,
+        arweave_tx_id: e.arweave_tx_id || null,
+        description: authenticatedWallet ? (e.description || null) : null,
         agent_wallet: e.agents?.wallet_address,
         agent_name: e.agents?.name,
         created_at: e.created_at,
