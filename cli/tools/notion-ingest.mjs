@@ -486,8 +486,10 @@ async function submitEntries(manifestPath, dryRun = false, filterDomain = null) 
         const summary = (entry.draftSummary || entry.title).slice(0, SUMMARY_MAX_CHARS);
         
         // Write content to temp file to avoid shell escaping issues
+        // If observer notes exist, submit those instead of the full document
+        const submitContent = entry.observerNotes || content;
         const tmpFile = `/tmp/crabspace-ingest-${entry.id}.txt`;
-        writeFileSync(tmpFile, content);
+        writeFileSync(tmpFile, submitContent);
         
         const cmd = [
             'crabspace submit',
@@ -614,6 +616,23 @@ switch (command) {
         break;
     }
     
+    case 'observe': {
+        const manifestPath = rest[0];
+        if (!manifestPath) {
+            console.error('Usage: node notion-ingest.mjs observe <manifest.json> [--domain goshi] [--limit 5]');
+            process.exit(1);
+        }
+        const domainIdx2 = rest.indexOf('--domain');
+        const filterDomain2 = domainIdx2 !== -1 ? rest[domainIdx2 + 1] : null;
+        const limitIdx2 = rest.indexOf('--limit');
+        const observeLimit = limitIdx2 !== -1 ? parseInt(rest[limitIdx2 + 1]) : null;
+        observeEntries(manifestPath, filterDomain2, observeLimit).catch(e => {
+            console.error(`❌ Observe failed: ${e.message}`);
+            process.exit(1);
+        });
+        break;
+    }
+
     case 'submit': {
         const manifestPath = rest[0];
         if (!manifestPath) {
@@ -647,12 +666,229 @@ switch (command) {
 Usage:
   node notion-ingest.mjs scan <notion-export-dir>           Scan & generate manifest
   node notion-ingest.mjs preview <manifest.json> [--limit N] Preview entries
+  node notion-ingest.mjs observe <manifest.json> [--domain]  LLM observer notes
   node notion-ingest.mjs submit <manifest.json> [--dry-run]  Submit to vault
   node notion-ingest.mjs stats <notion-export-dir>           Quick stats
 
 Workflow:
-  1. scan   → generates manifest.json with all ingestible files
+  1. scan    → generates manifest.json with all ingestible files
   2. preview → review entries, domains, tags
-  3. submit  → send approved entries to CrabSpace vault
+  3. observe → LLM processes each doc into structured notes (500-2000 words)
+  4. submit  → send observer notes to CrabSpace vault
         `);
+}
+
+// ─── OBSERVER: LLM-BASED DOCUMENT PROCESSING ──────────────────────────────────
+
+/**
+ * Load LLM configuration from OpenClaw config.
+ * Returns { apiKey, baseUrl, model, providerName, api, contextWindow }.
+ */
+function loadLLMConfig() {
+    const configPath = join(process.env.HOME, '.openclaw', 'openclaw.json');
+    if (!existsSync(configPath)) {
+        throw new Error('OpenClaw config not found at ~/.openclaw/openclaw.json');
+    }
+    
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    const providers = config.models?.providers || {};
+    
+    // Priority order: google (free, large context) > moonshot > openrouter > any
+    const preferred = ['google', 'moonshot', 'openrouter', 'fireworks', 'openai', 'xai'];
+    
+    for (const name of preferred) {
+        const provider = providers[name];
+        if (!provider?.apiKey || !provider?.models?.length) continue;
+        
+        // Pick the model with the largest context window
+        const model = provider.models.reduce((best, m) => 
+            (m.contextWindow || 0) > (best.contextWindow || 0) ? m : best
+        );
+        
+        return {
+            providerName: name,
+            apiKey: provider.apiKey,
+            baseUrl: provider.baseUrl,
+            api: provider.api || 'openai-completions',
+            model: model.id,
+            contextWindow: model.contextWindow || 128000,
+        };
+    }
+    
+    throw new Error('No LLM provider with API key found in OpenClaw config');
+}
+
+/**
+ * Call the LLM to generate observer notes.
+ * Supports Google Gemini API and OpenAI-compatible APIs.
+ */
+async function callLLM(llmConfig, systemPrompt, userContent) {
+    const { apiKey, baseUrl, api, model } = llmConfig;
+    
+    if (api === 'google-generative-ai') {
+        // Google Gemini API
+        const url = `${baseUrl}/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: systemPrompt + '\n\n---\n\n' + userContent }]
+                }],
+                generationConfig: {
+                    maxOutputTokens: 4096,
+                    temperature: 0.3,
+                },
+            }),
+            signal: AbortSignal.timeout(60000),
+        });
+        
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Gemini API ${res.status}: ${err.slice(0, 200)}`);
+        }
+        
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+    
+    // OpenAI-compatible API (moonshot, openrouter, fireworks, etc.)
+    const url = `${baseUrl}/chat/completions`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userContent },
+            ],
+            max_tokens: 4096,
+            temperature: 0.3,
+        }),
+        signal: AbortSignal.timeout(60000),
+    });
+    
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`LLM API ${res.status}: ${err.slice(0, 200)}`);
+    }
+    
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+}
+
+/**
+ * Process manifest entries through the LLM observer.
+ * Reads each document, generates structured notes, saves to manifest.
+ */
+async function observeEntries(manifestPath, filterDomain = null, limit = null) {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+    
+    // Load observer prompt template
+    const promptPath = join(dirname(new URL(import.meta.url).pathname), 'observer-prompt.md');
+    if (!existsSync(promptPath)) {
+        console.error('❌ Observer prompt not found at:', promptPath);
+        process.exit(1);
+    }
+    const observerPrompt = readFileSync(promptPath, 'utf-8');
+    
+    // Load LLM config from agent's OpenClaw configuration
+    const llmConfig = loadLLMConfig();
+    console.log(`\n🧠 Observer — ${llmConfig.providerName}/${llmConfig.model}`);
+    console.log(`   Context: ${llmConfig.contextWindow.toLocaleString()} tokens`);
+    
+    // Filter entries
+    let entries = manifest.entries.filter(e => {
+        if (e.observerNotes) return false; // Already observed
+        if (filterDomain && e.domain !== filterDomain) return false;
+        return true;
+    });
+    
+    if (limit) entries = entries.slice(0, limit);
+    
+    if (entries.length === 0) {
+        console.log('\n   No entries to observe (all already processed or filtered out).\n');
+        return;
+    }
+    
+    console.log(`   Processing ${entries.length} entries...\n`);
+    
+    let observed = 0;
+    let failed = 0;
+    
+    for (const entry of entries) {
+        const title = entry.title;
+        const shortTitle = title.length > 50 ? title.slice(0, 47) + '...' : title;
+        
+        process.stdout.write(`   📝 [${observed + failed + 1}/${entries.length}] ${shortTitle}...`);
+        
+        // Read the full document from disk (local only — never stored)
+        let content;
+        try {
+            content = readFileSync(entry.absolutePath, 'utf-8');
+        } catch (e) {
+            console.log(` ❌ File not found`);
+            failed++;
+            continue;
+        }
+        
+        // Build the user prompt with document content
+        const userPrompt = [
+            `DOCUMENT_TITLE: ${entry.title}`,
+            `DOCUMENT_DOMAIN: ${entry.domain}`,
+            `SOURCE_AUTHOR: Todd Wahnish`,
+            `WORD_COUNT: ${entry.wordCount}`,
+            `FILENAME: ${entry.fileName}`,
+            '',
+            '---',
+            '',
+            'DOCUMENT_CONTENT:',
+            '',
+            content,
+        ].join('\n');
+        
+        // Call LLM
+        try {
+            const notes = await callLLM(llmConfig, observerPrompt, userPrompt);
+            
+            if (!notes || notes.length < 100) {
+                console.log(` ⚠️  Empty/short response (${notes?.length || 0} chars)`);
+                failed++;
+                continue;
+            }
+            
+            // Store observer notes in the manifest entry
+            entry.observerNotes = notes;
+            entry.observerModel = `${llmConfig.providerName}/${llmConfig.model}`;
+            entry.observerWordCount = notes.split(/\s+/).length;
+            
+            console.log(` ✅ ${entry.observerWordCount} words`);
+            observed++;
+            
+            // Save manifest after each entry (crash-safe)
+            writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+            
+            // Rate limit: small delay between calls
+            await new Promise(r => setTimeout(r, 500));
+            
+        } catch (e) {
+            console.log(` ❌ ${e.message.slice(0, 60)}`);
+            entry.observerError = e.message;
+            failed++;
+            writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        }
+    }
+    
+    console.log(`\n${'─'.repeat(50)}`);
+    console.log(`   📊 Observer Results:`);
+    console.log(`      Observed:  ${observed}`);
+    console.log(`      Failed:    ${failed}`);
+    console.log(`      Total:     ${entries.length}`);
+    console.log(`${'─'.repeat(50)}\n`);
+    console.log(`   📋 Manifest updated: ${manifestPath}`);
+    console.log(`   Next: review notes, then submit with observer notes.\n`);
 }
