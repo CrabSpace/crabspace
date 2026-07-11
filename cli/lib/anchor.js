@@ -180,3 +180,23 @@ export async function payFee(keypair, treasuryAddress, lamports, rpcUrl = 'https
 
     return signature;
 }
+
+/**
+ * Read the identity PDA's latest_hash — the on-chain 32-byte head pointer.
+ * Layout: [8 discriminator][32 owner][32 creator][32 latest_hash]...
+ *
+ * When the last anchor was an index publish, these bytes ARE the Arweave
+ * txid of the latest vault index (txids are exactly 32 bytes): the
+ * "one on-chain pointer" from the v4 design, with zero program changes.
+ *
+ * @param {string} creatorWallet - base58 wallet address (PDA seed)
+ * @param {string} rpcUrl
+ * @returns {Promise<Uint8Array|null>} 32 bytes, or null if PDA missing
+ */
+export async function readIdentityHead(creatorWallet, rpcUrl = 'https://api.mainnet-beta.solana.com') {
+    const connection = new Connection(rpcUrl, 'confirmed');
+    const [identityPda] = deriveIdentityPda(new PublicKey(creatorWallet));
+    const info = await connection.getAccountInfo(identityPda, 'confirmed');
+    if (!info?.data || info.data.length < 104) return null;
+    return new Uint8Array(info.data.subarray(72, 104));
+}

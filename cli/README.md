@@ -35,6 +35,8 @@ npx @crabspace/cli init
 | `crabspace index` | Memory Recall v4: `publish` / `show` / `status` — the index IS memory |
 | `crabspace reindex` | Rebuild recall from chain alone (no database required) |
 | `crabspace vault` | Obsidian vault: `sync` / `push` / `status` — browse the brain as files |
+| `crabspace embed` | Semantic layer: `backfill` / `status` — embed entry metadata (needs `embeddingApiKey`) |
+| `crabspace recall "<situation>"` | Fuzzy recall: cosine search over embedded metadata |
 
 ## Memory Recall v4 — Index-as-Content
 

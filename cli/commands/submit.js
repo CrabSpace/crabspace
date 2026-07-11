@@ -15,7 +15,7 @@ import { loadKeypair, signForAction } from '../lib/sign.js';
 import { encryptData } from '../lib/encrypt.js';
 import { requireConfig, appendJournal } from '../lib/config.js';
 import { anchorOnChain, payFee } from '../lib/anchor.js';
-import { uploadToArweave } from '../lib/arweave.js';
+import { uploadToArweave, verifyArweaveUpload } from '../lib/arweave.js';
 
 export async function submit(args) {
     const config = requireConfig();
@@ -185,6 +185,16 @@ export async function submit(args) {
         );
         arweaveTxId = arweaveResult.txId;
         console.log(`   ✓ Arweave: ${arweaveTxId.slice(0, 12)}... (${arweaveResult.size} bytes)`);
+
+        // Verify-after-upload: a txid is only trustworthy once the blob is
+        // fetchable. Phantom txids (recorded but never landed) permanently
+        // orphan entries — never record one.
+        const verified = await verifyArweaveUpload(arweaveTxId);
+        if (!verified) {
+            console.log('   ⚠  Upload NOT verifiable on gateways — falling back to server-side upload');
+            arweaveTxId = null;
+            arweaveUploadFailed = true;
+        }
     } catch (arweaveErr) {
         // Upload failed — let the server try with treasury for genesis entries
         arweaveUploadFailed = true;

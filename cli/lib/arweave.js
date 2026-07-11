@@ -171,3 +171,25 @@ export async function getUploadCost(sizeBytes, keypairPath) {
         sol: irys.utils.fromAtomic(price).toString(),
     };
 }
+
+/**
+ * Verify an upload actually landed: fetch it back and confirm ciphertext.
+ * Guards against phantom txids — the March 2026 failure mode where the DB
+ * recorded transaction ids whose blobs never reached Arweave (gateways
+ * answer those with an HTML shell, which fetchFromArweave now rejects).
+ *
+ * @param {string} txId
+ * @param {object} [opts] - { attempts = 4, delayMs = 2000 }
+ * @returns {Promise<boolean>} true when the blob is confirmed fetchable
+ */
+export async function verifyArweaveUpload(txId, { attempts = 4, delayMs = 2000 } = {}) {
+    if (getEnvMode() === 'test' && txId.startsWith('test_ar_')) return true;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            const body = await fetchFromArweave(txId);
+            if (body && body.length > 0) return true;
+        } catch { /* not propagated yet — retry */ }
+        if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
+    }
+    return false;
+}
