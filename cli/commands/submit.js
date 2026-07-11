@@ -376,6 +376,21 @@ export async function submit(args) {
         (txSig ? `**TX:** \`${txSig}\`\n` : '**Anchoring:** pending\n')
     );
 
+    // 9. Will-coupled index publish (Memory Recall v4): the Will marks the
+    // succession moment, and the index is what makes the Will executable.
+    // A successor boots from chain head → latest index → everything.
+    if (isWill && !args['no-index']) {
+        console.log('');
+        console.log('📜 Will submitted — publishing vault index (succession checkpoint)...');
+        try {
+            const { indexCommand } = await import('./index-cmd.js');
+            await indexCommand({ _: ['publish'], publish: true, keypair: args.keypair, 'api-url': args['api-url'] });
+        } catch (idxErr) {
+            console.log(`   ⚠  Index publish failed (${idxErr.message}) — the Will is safe.`);
+            console.log('      Retry manually: crabspace index publish --publish');
+        }
+    }
+
     console.log('');
     console.log('✅ Work entry submitted!');
     console.log('');

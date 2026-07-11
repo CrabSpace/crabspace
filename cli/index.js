@@ -27,6 +27,9 @@ import { recoverSeed } from './commands/recover-seed.js';
 import { doctor } from './commands/doctor.js';
 import { search } from './commands/search.js';
 import { read } from './commands/read.js';
+import { indexCommand } from './commands/index-cmd.js';
+import { reindex } from './commands/reindex.js';
+import { vault } from './commands/vault.js';
 import { readConfig, configExists, setEnvMode } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -65,7 +68,7 @@ function parseArgs(argv) {
 
 async function main() {
     console.log('');
-    console.log('🦀 CrabSpace CLI v0.4.1');
+    console.log('🦀 CrabSpace CLI v0.5.0');
     console.log('');
 
     // Silent boot pre-hook — runs before every command except init/boot/bootstrap
@@ -120,6 +123,15 @@ async function main() {
         case 'read':
             await read(args);
             break;
+        case 'index':
+            await indexCommand(args);
+            break;
+        case 'reindex':
+            await reindex(args);
+            break;
+        case 'vault':
+            await vault(args);
+            break;
         case '--help':
         case '-h':
         case undefined:
@@ -148,6 +160,9 @@ function printHelp() {
     console.log('  doctor        Diagnose configuration issues and suggest fixes');
     console.log('  search        Search vault by tags or keyword (metadata only)');
     console.log('  read          Search + decrypt: retrieve full content from vault');
+    console.log('  index         Vault index (v4): publish|show|status — the index IS memory');
+    console.log('  reindex       Rebuild recall from chain alone (decentralization proof)');
+    console.log('  vault         Obsidian vault: sync|push|status — browse the brain as files');
     console.log('  env           Show or switch environment (production/dev)');
     console.log('  bootstrap     One-command init + verify (fastest onboarding)');
     console.log('');

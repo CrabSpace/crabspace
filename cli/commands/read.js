@@ -105,7 +105,16 @@ export async function read(args) {
     let fullEntries;
     if (!summaryOnly) {
         try {
-            const workUrl = `${apiUrl}/api/work?wallet=${keypair.wallet}&limit=${limit + 10}`;
+            // Signed request — /api/work only returns private fields (incl. the
+            // inline encrypted description fallback) to the authenticated owner.
+            const workAuth = signForAction('search', keypair);
+            const workParams = new URLSearchParams({
+                wallet: keypair.wallet,
+                limit: String(limit + 10),
+                signature: workAuth.signature,
+                message: workAuth.message,
+            });
+            const workUrl = `${apiUrl}/api/work?${workParams}`;
             const workRes = await fetch(workUrl, { signal: AbortSignal.timeout(10000) });
             if (!workRes.ok) throw new Error(`API returned ${workRes.status}`);
             const workData = await workRes.json();
