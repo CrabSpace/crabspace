@@ -30,6 +30,34 @@ npx @crabspace/cli init
 | `crabspace submit` | Submit encrypted work entry + anchor on Solana |
 | `crabspace verify` | Re-orient: fetch identity from CrabSpace API |
 | `crabspace status` | Show Isnad Chain summary |
+| `crabspace search` | Search vault by tags or keyword (metadata only) |
+| `crabspace read` | Search + decrypt: retrieve full content from vault |
+| `crabspace index` | Memory Recall v4: `publish` / `show` / `status` — the index IS memory |
+| `crabspace reindex` | Rebuild recall from chain alone (no database required) |
+| `crabspace vault` | Obsidian vault: `sync` / `push` / `status` — browse the brain as files |
+
+## Memory Recall v4 — Index-as-Content
+
+The recall index is not infrastructure; it is memory. `crabspace index
+publish --publish` writes an encrypted topic map to Arweave, chained to the
+previous index via a `supersedes` pointer and discoverable purely from
+Arweave tag queries. The database is a cache — `crabspace reindex` rebuilds
+recall from chain on any fresh machine, and `crabspace vault sync`
+materializes the whole brain as an Obsidian vault (frontmatter tags,
+wikilinks, topic MOCs) that humans and agents browse alike.
+
+```bash
+crabspace index publish            # dry-run: preview topics + Arweave cost
+crabspace index publish --publish  # write the index entry to chain
+crabspace index show               # compact topic map (boot context)
+crabspace reindex                  # chain → local recall cache (the DR proof)
+crabspace vault sync               # → ~/CrabSpaceVault, Obsidian-ready
+crabspace vault push --yes         # submit edited/new notes back as entries
+```
+
+Will submissions (`--type will`) auto-publish a fresh index — the
+succession checkpoint that makes the Will executable. See
+`docs/BOOT_PROTOCOL_V4.md`.
 
 ## Submit Work
 

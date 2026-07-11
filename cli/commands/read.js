@@ -17,7 +17,7 @@
 
 import { loadKeypair, signForAction } from '../lib/sign.js';
 import { requireConfig } from '../lib/config.js';
-import { decryptData } from '../lib/encrypt.js';
+import { decryptWithHistory } from '../lib/encrypt.js';
 import { fetchFromArweave } from '../lib/arweave.js';
 
 export async function read(args) {
@@ -105,7 +105,16 @@ export async function read(args) {
     let fullEntries;
     if (!summaryOnly) {
         try {
-            const workUrl = `${apiUrl}/api/work?wallet=${keypair.wallet}&limit=${limit + 10}`;
+            // Signed request — /api/work only returns private fields (incl. the
+            // inline encrypted description fallback) to the authenticated owner.
+            const workAuth = signForAction('search', keypair);
+            const workParams = new URLSearchParams({
+                wallet: keypair.wallet,
+                limit: String(limit + 10),
+                signature: workAuth.signature,
+                message: workAuth.message,
+            });
+            const workUrl = `${apiUrl}/api/work?${workParams}`;
             const workRes = await fetch(workUrl, { signal: AbortSignal.timeout(10000) });
             if (!workRes.ok) throw new Error(`API returned ${workRes.status}`);
             const workData = await workRes.json();
@@ -167,7 +176,7 @@ export async function read(args) {
         if (arweaveTxId) {
             try {
                 const encryptedBlob = await fetchFromArweave(arweaveTxId);
-                content = await decryptData(encryptedBlob, config.biosSeed);
+                content = await decryptWithHistory(encryptedBlob, config);
                 decrypted++;
             } catch (e) {
                 console.log(`      ⚠️  Arweave decrypt failed: ${e.message?.slice(0, 60)}`);
@@ -177,7 +186,7 @@ export async function read(args) {
         // Fallback: try inline description field
         if (!content && inlineDesc) {
             try {
-                content = await decryptData(inlineDesc, config.biosSeed);
+                content = await decryptWithHistory(inlineDesc, config);
                 decrypted++;
             } catch (e) {
                 console.log(`      ⚠️  Inline decrypt failed: ${e.message?.slice(0, 60)}`);

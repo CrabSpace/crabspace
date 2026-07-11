@@ -130,7 +130,14 @@ export async function fetchFromArweave(txId) {
                 signal: AbortSignal.timeout(10000),
             });
             if (res.ok) {
-                return await res.text();
+                const body = await res.text();
+                // Gateways answer missing transactions with an HTML app shell
+                // (HTTP 200). Treat any HTML payload as not-found — real
+                // entries are base64 ciphertext, never markup.
+                if (body.trimStart().startsWith('<!DOCTYPE') || body.trimStart().startsWith('<html')) {
+                    continue;
+                }
+                return body;
             }
         } catch {
             // Try next gateway
