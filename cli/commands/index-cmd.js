@@ -20,12 +20,12 @@ import { Keypair as SolKeypair } from '@solana/web3.js';
 import { requireConfig, getConfigDir, appendJournal } from '../lib/config.js';
 import { loadKeypair, signForAction } from '../lib/sign.js';
 import { encryptData } from '../lib/encrypt.js';
-import { uploadToArweave, getUploadCost } from '../lib/arweave.js';
+import { uploadToArweave, getUploadCost, verifyArweaveUpload } from '../lib/arweave.js';
 import { anchorOnChain } from '../lib/anchor.js';
 import { fetchAllEntries } from '../lib/vaultClient.js';
 import {
     buildIndex, buildSubIndex, attachChildren, envelopeSize,
-    findIndexTransactions, INDEX_ENTRY_TYPE,
+    findIndexTransactions, INDEX_ENTRY_TYPE, txidToBytes,
 } from '../lib/vaultIndex.js';
 
 export function indexStatePath() {
@@ -160,7 +160,23 @@ async function publish(args) {
     const { txId, contentHash } = await publishIndexBlob(index, config, keypair, keypairPath);
     console.log(`      ✓ Arweave: ${txId}`);
 
-    // 7. Record in the API cache (a normal entry row, type=index) — best-effort
+    // 7. Anchor the index txid on the Solana PDA (the "one on-chain pointer"
+    //    from the v4 design): latest_hash ← the 32 txid bytes, via log_work.
+    //    A successor reads the PDA and lands directly on the latest index.
+    if (!args['skip-anchor']) {
+        try {
+            const txidHex = Buffer.from(txidToBytes(txId)).toString('hex');
+            const keypairJson = JSON.parse(readFileSync(keypairPath, 'utf-8'));
+            const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
+            const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
+            const sig = await anchorOnChain(solKeypair, txidHex, rpcUrl);
+            console.log(`      ✓ PDA pointer updated (log_work): ${sig.slice(0, 12)}...`);
+        } catch (anchorErr) {
+            console.log(`      ⚠  PDA anchor failed (tag discovery still works): ${anchorErr.message.split('\n')[0].slice(0, 70)}`);
+        }
+    }
+
+    // 8. Record in the API cache (a normal entry row, type=index) — best-effort
     try {
         await recordIndexEntry({ index, txId, contentHash, config, keypair, apiUrl, args, keypairPath });
         console.log('      ✓ Recorded in cache (Supabase)');
@@ -210,6 +226,12 @@ async function publishIndexBlob(indexObj, config, keypair, keypairPath) {
         entryType: INDEX_ENTRY_TYPE,
     }, keypairPath);
 
+    // An unverifiable index is worse than no index — the whole recall chain
+    // would dangle from a phantom txid. Hard-fail so the publish can be retried.
+    if (!(await verifyArweaveUpload(txId))) {
+        throw new Error(`Index upload ${txId} not verifiable on any gateway — retry the publish.`);
+    }
+
     return { txId, contentHash, encrypted, seedEpoch };
 }
 
@@ -239,24 +261,10 @@ async function recordIndexEntry({ index, txId, contentHash, config, keypair, api
         const err = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(err.error || JSON.stringify(err));
     }
-    const data = await res.json();
-
-    // Best-effort on-chain anchor (same policy as regular submissions)
-    if (!args['skip-anchor']) {
-        try {
-            const keypairJson = JSON.parse(readFileSync(keypairPath, 'utf-8'));
-            const solKeypair = SolKeypair.fromSecretKey(Uint8Array.from(keypairJson));
-            const rpcUrl = args['rpc-url'] || 'https://api.mainnet-beta.solana.com';
-            const sig = await anchorOnChain(solKeypair, contentHash, rpcUrl);
-            if (sig && data.entry?.id) {
-                await fetch(`${apiUrl}/api/work/anchor`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ workId: data.entry.id, onChainSig: sig }),
-                });
-            }
-        } catch { /* anchor is best-effort */ }
-    }
+    await res.json();
+    // NOTE: no content-hash anchor here — the publish flow anchors the index
+    // TXID on the PDA (the pointer). Anchoring the content hash afterwards
+    // would overwrite the pointer with bytes that resolve to nothing.
 }
 
 // ─── index show ──────────────────────────────────────────────────────────────

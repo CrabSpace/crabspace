@@ -43,7 +43,30 @@ export async function reindex(args) {
     console.log('');
 
     // ─── 1. Resolve the chain head ───────────────────────────────────────────
+    // Fastest path: the Solana PDA's latest_hash IS the index txid when the
+    // last anchor was an index publish — one RPC read, no gateway indexing lag.
     let headTxId = args.head || null;
+    if (!headTxId && !args['no-pda']) {
+        try {
+            console.log('   ⛓️  Reading PDA head pointer (Solana)...');
+            const { readIdentityHead } = await import('../lib/anchor.js');
+            const { bytesToTxidCandidates } = await import('../lib/vaultIndex.js');
+            const headBytes = await readIdentityHead(keypair.wallet, args['rpc-url'] || 'https://api.mainnet-beta.solana.com');
+            if (headBytes) {
+                for (const candidate of bytesToTxidCandidates(headBytes)) {
+                    try {
+                        await fetchIndexEntry(candidate, config.biosSeed);
+                        headTxId = candidate;
+                        console.log(`   ✓ PDA pointer resolves to a live index: ${candidate.slice(0, 12)}...`);
+                        break;
+                    } catch { /* not an index txid under this encoding — try next */ }
+                }
+                if (!headTxId) console.log('   · PDA head is not an index pointer (predates v4 anchoring) — falling back to tag discovery.');
+            }
+        } catch (pdaErr) {
+            console.log(`   · PDA read unavailable (${pdaErr.message.split('\n')[0].slice(0, 50)}) — falling back to tag discovery.`);
+        }
+    }
     if (!headTxId) {
         console.log('   🔎 Discovering index entries via Arweave tag query...');
         const candidates = await findIndexTransactions(keypair.wallet, { first: 10 });

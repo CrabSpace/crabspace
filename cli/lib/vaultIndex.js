@@ -352,3 +352,35 @@ export async function walkIndexChain(headTxId, biosSeed, { maxDepth = 10, onStep
 
     return { indexes, txIds };
 }
+
+// ─── Transaction id ↔ bytes ──────────────────────────────────────────────────
+// Both id families encode exactly 32 bytes: native Arweave txids are
+// base64url (43 chars, may contain - and _); Irys data-item ids are base58
+// (43-44 chars). The byte form is what fits the PDA's latest_hash field.
+
+import bs58 from 'bs58';
+
+export function txidToBytes(txId) {
+    let bytes;
+    if (/[-_]/.test(txId) || txId.length === 43 && /=/.test(txId)) {
+        const b64 = txId.replace(/-/g, '+').replace(/_/g, '/');
+        bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    } else {
+        try {
+            bytes = bs58.decode(txId);
+        } catch {
+            const b64 = txId.replace(/-/g, '+').replace(/_/g, '/');
+            bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        }
+    }
+    if (bytes.length !== 32) throw new Error(`Not a 32-byte transaction id: ${txId}`);
+    return new Uint8Array(bytes);
+}
+
+/** Encode 32 bytes back to candidate txids: [base58, base64url]. */
+export function bytesToTxidCandidates(bytes) {
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    const b64url = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return [bs58.encode(bytes), b64url];
+}
