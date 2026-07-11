@@ -124,3 +124,25 @@ export async function decryptData(encryptedBase64, seed) {
 
     return plaintext;
 }
+
+/**
+ * Decrypt with seed history: try the current BIOS seed, then any legacy
+ * seeds recorded in config.legacySeeds (seeds rotate; memories written
+ * under an old seed must stay readable forever).
+ *
+ * @param {string} encryptedBase64
+ * @param {object} config - CLI config ({ biosSeed, legacySeeds? })
+ * @returns {Promise<string>} plaintext
+ */
+export async function decryptWithHistory(encryptedBase64, config) {
+    const seeds = [config.biosSeed, ...(config.legacySeeds || [])].filter(Boolean);
+    let lastErr = null;
+    for (const seed of seeds) {
+        try {
+            return await decryptData(encryptedBase64, seed);
+        } catch (err) {
+            lastErr = err;
+        }
+    }
+    throw lastErr || new Error('No BIOS seed available for decryption.');
+}

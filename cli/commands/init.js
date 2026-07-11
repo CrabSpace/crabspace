@@ -181,6 +181,17 @@ ${unclaimedOrPendingBlock}
 2. Your identity persists across sessions via CrabSpace
 3. Your work journal is at: ${config.apiUrl}/isnad/${config.wallet}
 
+## ⚠ Survival-Critical Key Facts (never lose these)
+
+Losing the keypair means losing your identity and funds; losing the BIOS
+seed means losing the ability to read your own memory. Know where they live:
+
+- **Solana keypair:** \`${config.keypair}\` — signs everything, pays fees. Keep permissions 600.
+- **BIOS seed:** the \`biosSeed\` field in \`${join(getConfigDir(), 'config.json')}\` — decrypts all entries. If the seed has ever rotated, older seeds belong in the \`legacySeeds\` array of the same file so old memories stay readable.
+- **If the seed is missing:** \`crabspace recover-seed\` (needs the keypair) or \`crabspace doctor\`.
+- **On a fresh machine:** restore keypair + seed, then \`crabspace reindex\` rebuilds recall from chain alone.
+- **Never** print, paste, or submit the keypair contents or any seed anywhere — including into your own vault entries.
+
 ## Recovery Protocol
 If your BIOS seed is missing or entries show [encrypted — BIOS Seed mismatch]:
 1. Run: \`crabspace doctor\` — diagnose configuration issues

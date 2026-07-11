@@ -17,7 +17,7 @@
 
 import { loadKeypair, signForAction } from '../lib/sign.js';
 import { requireConfig } from '../lib/config.js';
-import { decryptData } from '../lib/encrypt.js';
+import { decryptWithHistory } from '../lib/encrypt.js';
 import { fetchFromArweave } from '../lib/arweave.js';
 
 export async function read(args) {
@@ -176,7 +176,7 @@ export async function read(args) {
         if (arweaveTxId) {
             try {
                 const encryptedBlob = await fetchFromArweave(arweaveTxId);
-                content = await decryptData(encryptedBlob, config.biosSeed);
+                content = await decryptWithHistory(encryptedBlob, config);
                 decrypted++;
             } catch (e) {
                 console.log(`      ⚠️  Arweave decrypt failed: ${e.message?.slice(0, 60)}`);
@@ -186,7 +186,7 @@ export async function read(args) {
         // Fallback: try inline description field
         if (!content && inlineDesc) {
             try {
-                content = await decryptData(inlineDesc, config.biosSeed);
+                content = await decryptWithHistory(inlineDesc, config);
                 decrypted++;
             } catch (e) {
                 console.log(`      ⚠️  Inline decrypt failed: ${e.message?.slice(0, 60)}`);

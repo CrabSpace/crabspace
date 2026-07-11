@@ -11,7 +11,7 @@ import { requireConfig, getConfigDir, readConfig, writeConfig } from '../lib/con
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Keypair as SolKeypair } from '@solana/web3.js';
-import { decryptData } from '../lib/encrypt.js';
+import { decryptData, decryptWithHistory } from '../lib/encrypt.js';
 import { fetchFromArweave } from '../lib/arweave.js';
 
 // The exact delimiter used in init.js around the unclaimed callout.
@@ -263,7 +263,7 @@ export async function verify(args) {
 
             if (encryptedBlob) {
                 try {
-                    description = await decryptData(encryptedBlob, config.biosSeed);
+                    description = await decryptWithHistory(encryptedBlob, config);
                 } catch {
                     description = '[encrypted — BIOS Seed mismatch]';
                 }

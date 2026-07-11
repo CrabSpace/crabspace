@@ -32,7 +32,7 @@ import { homedir } from 'os';
 import { createHash } from 'crypto';
 import { requireConfig, writeConfig, readConfig } from '../lib/config.js';
 import { loadKeypair } from '../lib/sign.js';
-import { decryptData } from '../lib/encrypt.js';
+import { decryptWithHistory } from '../lib/encrypt.js';
 import { fetchFromArweave } from '../lib/arweave.js';
 import { fetchAllEntries } from '../lib/vaultClient.js';
 import { buildIndex, topicsForEntry, memoryTypeOf, entryRef } from '../lib/vaultIndex.js';
@@ -181,7 +181,7 @@ async function sync(args) {
         if (i < bodyCount && e.arweave_tx_id && !String(e.arweave_tx_id).startsWith('test_ar_')) {
             try {
                 const blob = await fetchFromArweave(e.arweave_tx_id);
-                body = await decryptData(blob, config.biosSeed);
+                body = await decryptWithHistory(blob, config);
                 process.stdout.write(`\r   🔓 Decrypted ${i + 1}/${bodyCount}...`);
             } catch { /* summary-only note for this entry */ }
         }
