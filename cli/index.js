@@ -30,6 +30,7 @@ import { read } from './commands/read.js';
 import { indexCommand } from './commands/index-cmd.js';
 import { reindex } from './commands/reindex.js';
 import { vault } from './commands/vault.js';
+import { embed, recall } from './commands/embed.js';
 import { readConfig, configExists, setEnvMode } from './lib/config.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -132,6 +133,12 @@ async function main() {
         case 'vault':
             await vault(args);
             break;
+        case 'embed':
+            await embed(args);
+            break;
+        case 'recall':
+            await recall(args);
+            break;
         case '--help':
         case '-h':
         case undefined:
@@ -163,6 +170,8 @@ function printHelp() {
     console.log('  index         Vault index (v4): publish|show|status — the index IS memory');
     console.log('  reindex       Rebuild recall from chain alone (decentralization proof)');
     console.log('  vault         Obsidian vault: sync|push|status — browse the brain as files');
+    console.log('  embed         Semantic layer: backfill|status — embed entry metadata');
+    console.log('  recall        Fuzzy recall: "what do I know about this situation?"');
     console.log('  env           Show or switch environment (production/dev)');
     console.log('  bootstrap     One-command init + verify (fastest onboarding)');
     console.log('');
